@@ -15,7 +15,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: agalue@opennms.org
+    email: saas@opennms.com
     privateKeySecretRef:
       name: letsencrypt-prod
     solvers:
@@ -41,66 +41,66 @@ spec:
   tls:
     - secretName: opennms-ingress-cert
       hosts:
-        - onms.aws.agalue.net
-        - onmsui.aws.agalue.net
-        - cassandra-reaper.aws.agalue.net
-        - grafana.aws.agalue.net
-        - hasura.aws.agalue.net
-        - kibana.aws.agalue.net
-        - elastichq.aws.agalue.net
-        - kafka-manager.aws.agalue.net
-        - tracing.aws.agalue.net
+        - onms.flows.cloud.opennms.com
+        - onmsui.flows.cloud.opennms.com
+        - cassandra-reaper.flows.cloud.opennms.com
+        - grafana.flows.cloud.opennms.com
+        - hasura.flows.cloud.opennms.com
+        - kibana.flows.cloud.opennms.com
+        - elastichq.flows.cloud.opennms.com
+        - kafka-manager.flows.cloud.opennms.com
+        - tracing.flows.cloud.opennms.com
   rules:
-    - host: onms.aws.agalue.net
+    - host: onms.flows.cloud.opennms.com
       http:
         paths:
           - path: /
             backend:
               serviceName: opennms-core
               servicePort: 8980
-    - host: cassandra-reaper.aws.agalue.net
+    - host: cassandra-reaper.flows.cloud.opennms.com
       http:
         paths:
           - path: /
             backend:
               serviceName: cassandra-reaper
               servicePort: 8080
-    - host: grafana.aws.agalue.net
+    - host: grafana.flows.cloud.opennms.com
       http:
         paths:
           - path: /
             backend:
               serviceName: grafana
               servicePort: 3000
-    - host: hasura.aws.agalue.net
+    - host: hasura.flows.cloud.opennms.com
       http:
         paths:
           - path: /
             backend:
               serviceName: hasura
               servicePort: 8080
-    - host: kafka-manager.aws.agalue.net
+    - host: kafka-manager.flows.cloud.opennms.com
       http:
         paths:
           - path: /
             backend:
               serviceName: kafka-manager
               servicePort: 9000
-    - host: kibana.aws.agalue.net
+    - host: kibana.flows.cloud.opennms.com
       http:
         paths:
           - path: /
             backend:
               serviceName: kibana
               servicePort: 5601
-    - host: elastichq.aws.agalue.net
+    - host: elastichq.flows.cloud.opennms.com
       http:
         paths:
           - path: /
             backend:
               serviceName: elastichq
               servicePort: 5000
-    - host: onmsui.aws.agalue.net
+    - host: onmsui.flows.cloud.opennms.com
       http:
         paths:
           - path: /
@@ -111,7 +111,7 @@ spec:
             backend:
               serviceName: opennms-core
               servicePort: 8980
-    - host: tracing.aws.agalue.net
+    - host: tracing.flows.cloud.opennms.com
       http:
         paths:
           - path: /
@@ -130,9 +130,9 @@ metadata:
     app: kafka
   annotations:
     # For Kops
-    dns.alpha.kubernetes.io/external: kafka.aws.agalue.net.
+    dns.alpha.kubernetes.io/external: kafka.flows.cloud.opennms.com.
     # For External-DNS
-    external-dns.alpha.kubernetes.io/hostname: kafka.aws.agalue.net.
+    external-dns.alpha.kubernetes.io/hostname: kafka.flows.cloud.opennms.com.
 spec:
   type: LoadBalancer
   ports:
