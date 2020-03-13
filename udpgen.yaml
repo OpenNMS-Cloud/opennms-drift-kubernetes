@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: udpgen
+  namespace: opennms
+  labels:
+    app: udpgen
+spec:
+  serviceName: udpgen
+  replicas: 1
+  updateStrategy:
+    type: RollingUpdate
+  podManagementPolicy: OrderedReady
+  selector:
+    matchLabels:
+      app: udpgen
+  template:
+    metadata:
+      labels:
+        app: udpgen
+    spec:
+      terminationGracePeriodSeconds: 300
+      securityContext:
+        runAsUser: 0
+        fsGroup: 1000
+      containers:
+      - name: udpgen
+        image: agalue/udpgen:latest
+        args: [ "/usr/local/bin/udpgen", "-i", "-x", "netflow5", "-r", "300", "-h", "minion", "-p", "8877" ]
+        imagePullPolicy: IfNotPresent
+        resources:
+          limits:
+            memory: 512Mi
+            cpu: 200m
+          requests:
+            memory: 256Mi
+            cpu: 100m
+# minion Netflow-9-Listener port 4729/udp
+# minion Netflow-5-Listener port 8877/udp
