@@ -9,6 +9,7 @@ up() {
 
     echo "Installing Drift"
     kubectl apply -k aks
+    kubectl apply -f manifests/external-access.yaml -n opennms
 
     echo "Waiting for external Kafka address"
     LBADDR=""
@@ -19,9 +20,16 @@ up() {
 
     echo "Publishing A records"
     az network dns record-set a add-record -z cloud.opennms.com --ttl 600 -g opennms-global -n 'kafka.flows' -a "$LBADDR"
+
+    kubectl apply -f udpgen.yaml -n opennms
 }
 
 down() {
+    kubectl delete -f udpgen.yaml -n opennms
+
+    echo "Deleting A records"
+    az network dns record-set a delete -z cloud.opennms.com -g opennms-global -n 'kafka.flows' -y
+
     kubectl delete -k aks
     ./ingress.sh down
     ./cert-mgr.sh down
@@ -69,6 +77,7 @@ create() {
     az aks get-credentials --name opennms -g "$GROUP" --context "$GROUP"
 
     sed -i -e "s/__EMAIL__/$EMAIL/" -e "s/__DOMAIN__/$DOMAIN/g" manifests/external-access.yaml
+    sed -i "s/__DOMAIN__/$DOMAIN/g" aks/patches/external-access.yaml aks/patches/common-settings.yaml
 }
 
 destroy() {

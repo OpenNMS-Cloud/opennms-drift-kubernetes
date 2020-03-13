@@ -10,57 +10,57 @@ spec:
   tls:
     - secretName: opennms-ingress-cert
       hosts:
-        - onms.azure.agalue.net
-        - grafana.azure.agalue.net
-        - hasura.azure.agalue.net
-        - kibana.azure.agalue.net
-        - elastichq.azure.agalue.net
-        - kafka-manager.azure.agalue.net
-        - tracing.azure.agalue.net
+        - onms.__DOMAIN__
+        - grafana.__DOMAIN__
+        - hasura.__DOMAIN__
+        - kibana.__DOMAIN__
+        - elastichq.__DOMAIN__
+        - kafka-manager.__DOMAIN__
+        - tracing.__DOMAIN__
   rules:
-    - host: onms.azure.agalue.net
+    - host: onms.__DOMAIN__
       http:
         paths:
           - path: /
             backend:
               serviceName: opennms-core
               servicePort: 8980
-    - host: grafana.azure.agalue.net
+    - host: grafana.__DOMAIN__
       http:
         paths:
           - path: /
             backend:
               serviceName: grafana
               servicePort: 3000
-    - host: hasura.azure.agalue.net
+    - host: hasura.__DOMAIN__
       http:
         paths:
           - path: /
             backend:
               serviceName: hasura
               servicePort: 8080
-    - host: kafka-manager.azure.agalue.net
+    - host: kafka-manager.__DOMAIN__
       http:
         paths:
           - path: /
             backend:
               serviceName: kafka-manager
               servicePort: 9000
-    - host: kibana.azure.agalue.net
+    - host: kibana.__DOMAIN__
       http:
         paths:
           - path: /
             backend:
               serviceName: kibana
               servicePort: 5601
-    - host: elastichq.azure.agalue.net
+    - host: elastichq.__DOMAIN__
       http:
         paths:
           - path: /
             backend:
               serviceName: elastichq
               servicePort: 5000
-    - host: tracing.azure.agalue.net
+    - host: tracing.__DOMAIN__
       http:
         paths:
           - path: /
