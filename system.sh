@@ -1,6 +1,7 @@
 #!/bin/sh
 
 up() {
+    kubectl apply -f debug.yaml -n opennms
     ./cert-mgr.sh up
     ./ingress.sh up
 
@@ -33,12 +34,15 @@ down() {
     kubectl delete -k aks
     ./ingress.sh down
     ./cert-mgr.sh down
+
+    kubectl delete -f debug.yaml -n opennms
 }
 
 status() {
     ./cert-mgr.sh status
     ./ingress.sh status
     kubectl get pod -n opennms
+    kubectl get svc dnscache -n opennms
 
     ADMINUSER=$(kubectl -n opennms get secret kafka-jaas -o jsonpath='{.data.KAFKA_ADMIN_USER}' | base64 -d)
     PASSWORD=$(kubectl -n opennms get secret kafka-jaas -o jsonpath='{.data.KAFKA_ADMIN_PASSWORD}' | base64 -d)
@@ -76,6 +80,17 @@ create() {
     --tags Environment=Development
     az aks get-credentials --name opennms -g "$GROUP" --context "$GROUP"
 
+    echo "Installing a DNS cache service"
+    kubectl create cm -n opennms dnscache-conf --from-file unbound.conf
+    kubectl apply -f dnscache.yaml
+    DNSIP=""
+    while [ "$DNSIP" = "" ]; do
+        DNSIP=$(kubectl get svc dnscache -n opennms | grep -Eo "ClusterIP\s+\S+\s+" | awk '{print $2}')
+    done
+    echo "Using DNS cache address: $DNSIP"
+
+    cp -f manifests/opennms.minion.yaml manifests/opennms.minion.yaml.bak
+    sed -i "s/__DNSIP__/$DNSIP/g" manifests/opennms.minion.yaml
     sed -i -e "s/__EMAIL__/$EMAIL/" -e "s/__DOMAIN__/$DOMAIN/g" manifests/external-access.yaml
     sed -i "s/__DOMAIN__/$DOMAIN/g" aks/patches/external-access.yaml aks/patches/common-settings.yaml
 }
@@ -83,6 +98,8 @@ create() {
 destroy() {
     az aks delete --yes --name opennms -g "$GROUP"
     az group delete --yes --name "$GROUP"
+    kubectl delete cm -n opennms dnscache-conf
+    cp -f manifests/opennms.minion.yaml.bak manifests/opennms.minion.yaml
 }
 
 export GROUP=flowslab
