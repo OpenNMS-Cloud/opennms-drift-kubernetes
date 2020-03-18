@@ -13,7 +13,8 @@ spec:
       - name: minion
         resources:
           limits:
-            memory: 1Gi
+            memory: 2Gi
+            cpu: 1
           requests:
-            memory: 512Mi
+            memory: 2Gi
           $patch: replace
