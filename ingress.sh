@@ -20,7 +20,7 @@ up() {
 
     echo "Waiting for external address"
     LBADDR=""
-    while [ "$LBADDR" == "" ]; do
+    while [ "$LBADDR" = "" ]; do
       LBADDR=$(kubectl get svc -A -l app.kubernetes.io/name=ingress-nginx | grep -Eo "LoadBalancer\s+\S+\s+[0-9.]+\s+80:" | awk '{print $3}')
     done
     echo LoadBalancer "$LBADDR"
