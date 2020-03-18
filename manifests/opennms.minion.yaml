@@ -79,7 +79,7 @@ spec:
       dnsPolicy: None
       dnsConfig:
         nameservers:
-          -  10.0.96.190
+          - __DNSIP__
         searches:
           - opennms.svc.cluster.local
           - svc.cluster.local
