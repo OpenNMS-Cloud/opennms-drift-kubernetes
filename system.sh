@@ -80,6 +80,8 @@ create() {
     --tags Environment=Development
     az aks get-credentials --name opennms -g "$GROUP" --context "$GROUP"
 
+    kubectl create ns opennms
+
     echo "Installing a DNS cache service"
     kubectl create cm -n opennms dnscache-conf --from-file unbound.conf
     kubectl apply -f dnscache.yaml
