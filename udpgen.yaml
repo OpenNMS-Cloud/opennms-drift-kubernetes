@@ -12,7 +12,7 @@ spec:
   containers:
   - name: udpgen
     image: agalue/udpgen:latest
-    args: [ "/usr/local/bin/udpgen", "-i", "-x", "netflow5", "-r", "3", "-h", "minion-0.minion.opennms.svc.cluster.local", "-p", "8877" ]
+    args: [ "/usr/local/bin/udpgen", "-i", "-x", "netflow5", "-r", "9", "-h", "minion-0.minion.opennms.svc.cluster.local", "-p", "8877" ]
     imagePullPolicy: IfNotPresent
     resources:
       limits:
@@ -36,7 +36,7 @@ spec:
   containers:
   - name: udpgen
     image: agalue/udpgen:latest
-    args: [ "/usr/local/bin/udpgen", "-i", "-x", "netflow5", "-r", "3", "-h", "minion-1.minion.opennms.svc.cluster.local", "-p", "8877" ]
+    args: [ "/usr/local/bin/udpgen", "-i", "-x", "netflow5", "-r", "9", "-h", "minion-1.minion.opennms.svc.cluster.local", "-p", "8877" ]
     imagePullPolicy: IfNotPresent
     resources:
       limits:
