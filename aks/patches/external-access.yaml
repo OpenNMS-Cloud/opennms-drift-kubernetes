@@ -10,57 +10,57 @@ spec:
   tls:
     - secretName: opennms-ingress-cert
       hosts:
-        - onms.__DOMAIN__
-        - grafana.__DOMAIN__
-        - hasura.__DOMAIN__
-        - kibana.__DOMAIN__
-        - elastichq.__DOMAIN__
-        - kafka-manager.__DOMAIN__
-        - tracing.__DOMAIN__
+        - onms.flows.cloud.opennms.com
+        - grafana.flows.cloud.opennms.com
+        - hasura.flows.cloud.opennms.com
+        - kibana.flows.cloud.opennms.com
+        - elastichq.flows.cloud.opennms.com
+        - kafka-manager.flows.cloud.opennms.com
+        - tracing.flows.cloud.opennms.com
   rules:
-    - host: onms.__DOMAIN__
+    - host: onms.flows.cloud.opennms.com
       http:
         paths:
           - path: /
             backend:
               serviceName: opennms-core
               servicePort: 8980
-    - host: grafana.__DOMAIN__
+    - host: grafana.flows.cloud.opennms.com
       http:
         paths:
           - path: /
             backend:
               serviceName: grafana
               servicePort: 3000
-    - host: hasura.__DOMAIN__
+    - host: hasura.flows.cloud.opennms.com
       http:
         paths:
           - path: /
             backend:
               serviceName: hasura
               servicePort: 8080
-    - host: kafka-manager.__DOMAIN__
+    - host: kafka-manager.flows.cloud.opennms.com
       http:
         paths:
           - path: /
             backend:
               serviceName: kafka-manager
               servicePort: 9000
-    - host: kibana.__DOMAIN__
+    - host: kibana.flows.cloud.opennms.com
       http:
         paths:
           - path: /
             backend:
               serviceName: kibana
               servicePort: 5601
-    - host: elastichq.__DOMAIN__
+    - host: elastichq.flows.cloud.opennms.com
       http:
         paths:
           - path: /
             backend:
               serviceName: elastichq
               servicePort: 5000
-    - host: tracing.__DOMAIN__
+    - host: tracing.flows.cloud.opennms.com
       http:
         paths:
           - path: /

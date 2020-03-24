@@ -191,18 +191,18 @@ spec:
           requests:
             cpu: 500m
             memory: 1Gi
-        readinessProbe:
-          tcpSocket:
-            port: karaf
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        livenessProbe:
-          exec:
-            command:
-            - /health.sh
-          initialDelaySeconds: 60
-          periodSeconds: 60
-          timeoutSeconds: 15
+        #readinessProbe:
+        #  tcpSocket:
+        #    port: karaf
+        #  initialDelaySeconds: 30
+        #  periodSeconds: 10
+        #livenessProbe:
+        #  exec:
+        #    command:
+        #    - /health.sh
+        #  initialDelaySeconds: 60
+        #  periodSeconds: 60
+        #  timeoutSeconds: 15
       volumes:
       - name: etc-overlay
         emptyDir: {}

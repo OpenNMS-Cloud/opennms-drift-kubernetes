@@ -92,7 +92,8 @@ create() {
     echo "Using DNS cache address: $DNSIP"
 
     cp -f manifests/opennms.minion.yaml manifests/opennms.minion.yaml.bak
-    sed -i "s/__DNSIP__/$DNSIP/g" manifests/opennms.minion.yaml
+    cp -f manifests/config/onms-minion-init.sh manifests/config/onms-minion-init.sh.bak
+    sed -i "s/__DNSIP__/$DNSIP/g" manifests/opennms.minion.yaml manifests/config/onms-minion-init.sh
     sed -i -e "s/__EMAIL__/$EMAIL/" -e "s/__DOMAIN__/$DOMAIN/g" manifests/external-access.yaml
     sed -i "s/__DOMAIN__/$DOMAIN/g" aks/patches/external-access.yaml aks/patches/common-settings.yaml
 }
@@ -100,8 +101,8 @@ create() {
 destroy() {
     az aks delete --yes --name opennms -g "$GROUP"
     az group delete --yes --name "$GROUP"
-    kubectl delete cm -n opennms dnscache-conf
     cp -f manifests/opennms.minion.yaml.bak manifests/opennms.minion.yaml
+    cp -f manifests/config/onms-minion-init.sh.bak manifests/config/onms-minion-init.sh
 }
 
 export GROUP=flowslab

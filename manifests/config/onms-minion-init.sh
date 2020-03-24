@@ -141,6 +141,24 @@ batchSize=10
 offHeapFilePath=
 EOF
 
+## Tweak DNS resolution for high performance
+cat <<EOF > ${OVERLAY}/org.opennms.features.dnsresolver.netty.cfg
+num-contexts = 16
+nameservers = __DNSIP__
+query-timeout-millis = 500
+max-cache-size = 500000
+min-ttl-seconds = 60
+max-ttl-seconds = 300
+negative-ttl-seconds = 300
+breaker-enabled = true
+breaker-failure-rate-threshold = 90
+breaker-wait-duration-in-open-state = 5
+breaker-ring-buffer-size-in-half-open-state = 100
+breaker-ring-buffer-size-in-closed-state = 50000
+bulkhead-max-concurrent-calls = 50000
+bulkhead-max-wait-duration-millis = 0
+EOF
+
 ### Optional Settings, only relevant for processing Flows and Telemetry data
 
 if [[ ${SINGLE_PORT} != "" ]]; then
@@ -187,10 +205,12 @@ name=Netflow-5-Listener
 class-name=org.opennms.netmgt.telemetry.listeners.UdpListener
 parameters.host=0.0.0.0
 parameters.port=8877
-parameters.maxPacketSize=16192
 parsers.0.name=Netflow-5
 parsers.0.class-name=org.opennms.netmgt.telemetry.protocols.netflow.parser.Netflow5UdpParser
+parsers.0.parameters.maxClockSkew = 300
+parsers.0.parameters.clockSkewEventRate = 3600
 parsers.0.parameters.dnsLookupsEnabled=true
+parsers.0.queue.use-routing-key = false
 EOF
 
   cat <<EOF > ${OVERLAY}/org.opennms.features.telemetry.listeners-udp-4729.cfg
