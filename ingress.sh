@@ -15,29 +15,29 @@ up() {
     echo "Waiting for pods"
     READY=""
     while [ "$READY" != "1/1" ]; do
-        READY=$(kubectl get pods --all-namespaces -l app.kubernetes.io/name=ingress-nginx|grep -o "1/1")
+        READY=$(kubectl get pods -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx|grep -o "1/1")
     done
 
     echo "Waiting for external address"
     LBADDR=""
     while [ "$LBADDR" = "" ]; do
-      LBADDR=$(kubectl get svc -A -l app.kubernetes.io/name=ingress-nginx | grep -Eo "LoadBalancer\s+\S+\s+[0-9.]+\s+80:" | awk '{print $3}')
+      LBADDR=$(kubectl get svc -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx | grep -Eo "LoadBalancer\s+\S+\s+[0-9.]+\s+80:" | awk '{print $3}')
     done
     echo LoadBalancer "$LBADDR"
 
     echo "Publishing A records"
-    az network dns record-set a add-record -z cloud.opennms.com --ttl 600 -g opennms-global -n '*.flows' -a "$LBADDR"
+    az network dns record-set a add-record -z cloud.opennms.com --ttl 600 -g cloud-global -n '*.flows' -a "$LBADDR"
 }
 
 down() {
     kubectl delete ns ingress-nginx
     echo "Deleting A records"
-    az network dns record-set a delete -z cloud.opennms.com -g opennms-global -n '*.flows' -y
+    az network dns record-set a delete -z cloud.opennms.com -g cloud-global -n '*.flows' -y
 }
 
 status() {
     echo Ingress NGINX
-    kubectl get svc,pods --all-namespaces -l app.kubernetes.io/name=ingress-nginx
+    kubectl get svc,pods -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx
 }
 
 case "$1" in
@@ -46,3 +46,4 @@ case "$1" in
     status) status ;;
     *) echo $(basename $0) '(up|down|status)' ;;
 esac
+
