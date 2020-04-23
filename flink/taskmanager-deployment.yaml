@@ -1,9 +1,11 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: flink-taskmanager
 spec:
   replicas: 2
+  serviceName: flink-taskmanager
+  podManagementPolicy: Parallel
   selector:
     matchLabels:
       app: flink
@@ -18,7 +20,7 @@ spec:
       - name: taskmanager
         image: flink:1.9
         workingDir: /opt/flink
-        command: ["/bin/bash", "-c", "$FLINK_HOME/bin/taskmanager.sh start; \
+        command: ["/bin/bash", "-c", "cp $FLINK_HOME/opt/flink-metrics-prometheus-1.9.2.jar $FLINK_HOME/lib && $FLINK_HOME/bin/taskmanager.sh start; \
           while :;
           do
             if [[ -f $(find log -name '*taskmanager*.log' -print -quit) ]];

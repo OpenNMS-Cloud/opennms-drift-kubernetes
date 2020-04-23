@@ -11,6 +11,8 @@ spec:
     port: 6124
   - name: ui
     port: 8081
+  - name: prom
+    port: 9999
   selector:
     app: flink
     component: jobmanager
