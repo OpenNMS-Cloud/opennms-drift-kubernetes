@@ -17,7 +17,15 @@ spec:
         - elastichq.flows.cloud.opennms.com
         - kafka-manager.flows.cloud.opennms.com
         - tracing.flows.cloud.opennms.com
+        - flink.flows.cloud.opennms.com
   rules:
+    - host: flink.flows.cloud.opennms.com
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: flink-jobmanager
+              servicePort: 8081
     - host: onms.flows.cloud.opennms.com
       http:
         paths:
