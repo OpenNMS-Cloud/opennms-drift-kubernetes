@@ -76,14 +76,6 @@ spec:
         app: minion
     spec:
       terminationGracePeriodSeconds: 60
-      dnsPolicy: None
-      dnsConfig:
-        nameservers:
-          - __DNSIP__
-        searches:
-          - opennms.svc.cluster.local
-          - svc.cluster.local
-          - cluster.local
       initContainers:
       # Initialize Minion Configuration
       # Requires the same image/version used at runtime: minion
