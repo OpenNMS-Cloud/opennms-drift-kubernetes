@@ -37,6 +37,7 @@ up() {
     echo "Publishing A records"
     az network dns record-set a add-record -z cloud.opennms.com --ttl 600 -g cloud-global -n 'kafka.flows' -a "$LBADDR"
 
+    kubectl apply -f flink -n ${NAMESPACE}
     kubectl apply -f udpgen.yaml -n ${NAMESPACE}
 }
 
@@ -44,6 +45,7 @@ down() {
     echo "Deleting A records"
     az network dns record-set a delete -z cloud.opennms.com -g cloud-global -n 'kafka.flows' -y
     ./ingress.sh down
+    kubectl delete -f flink -n ${NAMESPACE}
 
     kubectl delete ns ${NAMESPACE}
 
