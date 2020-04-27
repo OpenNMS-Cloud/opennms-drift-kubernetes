@@ -1,19 +1,7 @@
-# @author Alejandro Galue <agalue@opennms.org>
-#
-# Sentinel is required only for Processing Flows and Telemetry Data.
-# Using StatefulSets for Sentinels only to have a unique and immutable SENTINEL_ID.
-# SENTINEL_ID is required for tracing.
-#
-# NOTES:
-# - It is perfectly valid to have all the required configuration files on a config-map,
-#   and then mount those files to the overlay directory, instead of using an initContainer.
-
----
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
   name: sentinel
-  namespace: opennms
 spec:
   maxReplicas: 5
   minReplicas: 2
@@ -28,7 +16,6 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: sentinel
-  namespace: opennms
   labels:
     app: sentinel
 spec:
@@ -60,7 +47,7 @@ spec:
       # Initialize Sentinel Configuration
       # Requires the same image/version used at runtime: sentinel
       - name: init-config
-        image: opennms/sentinel:25.2.1
+        image: opennms/sentinel:26.0.0
         imagePullPolicy: IfNotPresent
         command: [ bash, /init.sh ]
         env:
@@ -75,26 +62,24 @@ spec:
               key: OPENNMS_INSTANCE_ID
               name: common-settings
         - name: KAFKA_SERVER
-          value: kafka.opennms.svc.cluster.local
-        - name: CASSANDRA_SERVER
-          value: cassandra.opennms.svc.cluster.local
+          valueFrom:
+            configMapKeyRef:
+              key: KAFKA_SERVER
+              name: common-settings
         - name: ELASTIC_SERVER
-          value: esdata.opennms.svc.cluster.local
+          valueFrom:
+            configMapKeyRef:
+              key: ELASTIC_SERVER
+              name: common-settings
         - name: ELASTIC_PASSWORD
           valueFrom:
             secretKeyRef:
-              key: ELASTICSEARCH_PASSWORD
+              key: ELASTIC_PASSWORD
               name: onms-passwords
         - name: ELASTIC_INDEX_STRATEGY_FLOWS
-          valueFrom:
-            configMapKeyRef:
-              key: ELASTIC_INDEX_STRATEGY_FLOWS
-              name: common-settings
+          value: daily
         - name: ELASTIC_REPLICATION_FACTOR
-          valueFrom:
-            configMapKeyRef:
-              key: ELASTIC_REPLICATION_FACTOR
-              name: common-settings
+          value: '2'
         - name: OPENNMS_HTTP_USER
           value: admin
         - name: OPENNMS_HTTP_PASS
@@ -103,10 +88,7 @@ spec:
               key: OPENNMS_UI_ADMIN_PASSWORD
               name: onms-passwords
         - name: NUM_LISTENER_THREADS
-          valueFrom:
-            configMapKeyRef:
-              key: KAFKA_NUM_PARTITIONS
-              name: common-settings
+          value: '6'
         - name: JAEGER_AGENT_HOST # Should be consistent with jaeger.yaml
           value: onms-tracing-agent.opennms.svc.cluster.local
         volumeMounts:
@@ -126,7 +108,7 @@ spec:
           value: '600'
       containers:
       - name: sentinel
-        image: opennms/sentinel:25.2.1
+        image: opennms/sentinel:26.0.0
         imagePullPolicy: IfNotPresent
         args:
         - -c
@@ -151,11 +133,14 @@ spec:
               key: MINION_LOCATION
               name: common-settings
         - name: POSTGRES_HOST
-          value: postgresql.opennms.svc.cluster.local
+          valueFrom:
+            configMapKeyRef:
+              key: POSTGRES_SERVER
+              name: common-settings
         - name: POSTGRES_PORT
           value: '5432'
         - name: POSTGRES_USER
-          value: postgres
+          value: opennms
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -191,18 +176,18 @@ spec:
           requests:
             cpu: 500m
             memory: 1Gi
-        #readinessProbe:
-        #  tcpSocket:
-        #    port: karaf
-        #  initialDelaySeconds: 30
-        #  periodSeconds: 10
-        #livenessProbe:
-        #  exec:
-        #    command:
-        #    - /health.sh
-        #  initialDelaySeconds: 60
-        #  periodSeconds: 60
-        #  timeoutSeconds: 15
+        readinessProbe:
+         tcpSocket:
+           port: karaf
+         initialDelaySeconds: 30
+         periodSeconds: 10
+        livenessProbe:
+         exec:
+           command:
+           - /health.sh
+         initialDelaySeconds: 60
+         periodSeconds: 60
+         timeoutSeconds: 15
       volumes:
       - name: etc-overlay
         emptyDir: {}

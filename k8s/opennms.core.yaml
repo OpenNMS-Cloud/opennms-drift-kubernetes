@@ -112,7 +112,7 @@ spec:
         - name: POSTGRES_PORT
           value: '5432'
         - name: POSTGRES_USER
-          value: opennms
+          value: postgres
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -134,7 +134,7 @@ spec:
             cpu: 4
             memory: 6Gi
           requests:
-            cpu: 4
+            cpu: 500m
             memory: 4Gi
         readinessProbe:
           httpGet:
