@@ -88,7 +88,7 @@ EOT
 create_settings() {
   export KAFKA_SERVER=$(curl -sS -u ${KAFKA_USER}:${KAFKA_PASSWORD} -G https://${HDI}/api/v1/clusters/kafka-flows/services/KAFKA/components/KAFKA_BROKER | jq -r '["\(.host_components[].HostRoles.host_name)"] | join(",")' | cut -d',' -f1)
   
-  export ELASTIC_SERVER=$(az vm list-ip-addresses -n flowsmaster-0 -g ${RG} --query '[0].virtualMachine.network.privateIpAddresses[0]')
+  export ELASTIC_SERVER=$(az vm list-ip-addresses -n flowsdata-0 -g ${RG} --query '[0].virtualMachine.network.privateIpAddresses[0]')
 
   kubectl -n $NAMESPACE apply -f -<<EOT
 apiVersion: v1
