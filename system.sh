@@ -1,7 +1,30 @@
 #!/bin/sh
 
-up() {
+infra_up() {
+  SUBNET=$(az network vnet create --name vnet-flows --address-prefix 10.5.0.0/16 -g ${RG} --subnet-name default --subnet-prefix 10.5.0.0/24 -o json --query 'newVNet.subnets[0].id')
+
+  az aks create -n k8s-flows -g ${RG} -p flows -s Standard_DS3_v2 -z 1 --vnet-subnet-id=${SUBNET}
+
+  az hdinsight create -n kafka-flows -g ${RG} -t kafka --component-version kafka=2.1 --subnet ${SUBNET} --http-password "${KAFKA_PASSWORD}" --http-user "${KAFKA_USER}" --workernode-data-disks-per-node 1
+
+  az postgres server create -n ${POSTGRES_SERVER} -g ${RG} --version 11 --sku-name GP_Gen5_4 -p "${POSTGRES_PASSWORD}" -u "${POSTGRES_USER}"
+
+  # TODO: Add another subnet 10.5.1.0/24 as 'elastic'
+  # TODO: Deploy elasticsearch cluster into subnet 'elastic'
+}
+
+infra_down() {
+  az aks delete -g ${RG} -n k8s-flows -y
+  az hdinsight delete -n kafka-flows -g ${RG} -y
+  # TODO: delete elastic cluster
+  az network vnet delete --name vnet-flows -g ${RG}
+}
+
+kube_up() {
     kubectl create ns ${NAMESPACE}
+
+    create_settings
+    create_secret
 
     echo "Installing a DNS cache service"
     kubectl create cm -n ${NAMESPACE} dnscache-conf --from-file unbound.conf
@@ -12,12 +35,8 @@ up() {
     done
     echo "Using DNS cache address: $DNSIP"
 
-    cp -f manifests/opennms.minion.yaml manifests/opennms.minion.yaml.bak
     cp -f manifests/config/onms-minion-init.sh manifests/config/onms-minion-init.sh.bak
-    sed -i "s/__DNSIP__/$DNSIP/g" manifests/opennms.minion.yaml manifests/config/onms-minion-init.sh
-    sed -i -e "s/__EMAIL__/$EMAIL/" -e "s/__DOMAIN__/$DOMAIN/g" manifests/external-access.yaml
-    sed -i "s/__DOMAIN__/$DOMAIN/g" aks/patches/external-access.yaml aks/patches/common-settings.yaml
-    kubectl apply -f debug.yaml -n ${NAMESPACE}
+    sed -i "s/__DNSIP__/$DNSIP/g" manifests/config/onms-minion-init.sh
     ./ingress.sh up
 
     echo "Installing Jaeger CRDs"
@@ -27,23 +46,11 @@ up() {
     kubectl apply -k aks
     kubectl apply -f manifests/external-access.yaml -n ${NAMESPACE}
 
-    echo "Waiting for external Kafka address"
-    LBADDR=""
-    while [ "$LBADDR" = "" ]; do
-      LBADDR=$(kubectl get svc ext-kafka -n ${NAMESPACE} | grep -Eo "LoadBalancer\s+\S+\s+[0-9.]+\s+" | awk '{print $3}')
-    done
-    echo LoadBalancer "$LBADDR"
-
-    echo "Publishing A records"
-    az network dns record-set a add-record -z cloud.opennms.com --ttl 600 -g cloud-global -n 'kafka.flows' -a "$LBADDR"
-
     kubectl apply -f flink -n ${NAMESPACE}
     kubectl apply -f udpgen.yaml -n ${NAMESPACE}
 }
 
-down() {
-    echo "Deleting A records"
-    az network dns record-set a delete -z cloud.opennms.com -g cloud-global -n 'kafka.flows' -y
+kube_down() {
     ./ingress.sh down
     kubectl delete -f flink -n ${NAMESPACE}
 
@@ -53,38 +60,82 @@ down() {
     cp -f manifests/config/onms-minion-init.sh.bak manifests/config/onms-minion-init.sh
 }
 
-status() {
-    ./ingress.sh status
-    kubectl get pod -n ${NAMESPACE}
-    kubectl get svc dnscache -n ${NAMESPACE}
+up() {
+  infra_up
+  kube_up
+}
 
-    ADMINUSER=$(kubectl -n ${NAMESPACE} get secret kafka-jaas -o jsonpath='{.data.KAFKA_ADMIN_USER}' | base64 -d)
-    PASSWORD=$(kubectl -n ${NAMESPACE} get secret kafka-jaas -o jsonpath='{.data.KAFKA_ADMIN_PASSWORD}' | base64 -d)
-    echo "Kafka admin user: $ADMINUSER Password: $PASSWORD"
+down() {
+  kube_down
+  infra_down
+}
 
-    CLIENTUSER=$(kubectl -n ${NAMESPACE} get secret kafka-jaas -o jsonpath='{.data.KAFKA_CLIENT_USER}' | base64 -d)
-    PASSWORD=$(kubectl -n ${NAMESPACE} get secret kafka-jaas -o jsonpath='{.data.KAFKA_CLIENT_PASSWORD}' | base64 -d)
-    echo "Kafka client user: $CLIENTUSER Password: $PASSWORD"
+create_secret() {
+    export ELASTIC_PASSWORD_B64=$(echo -n $ELASTIC_PASSWORD|base64)
+    export POSTGRES_PASSWORD_B64=$(echo -n $POSTGRES_PASSWORD|base64)
 
-    PASSWORD=$(kubectl -n ${NAMESPACE} get secret onms-passwords -o jsonpath='{.data.ELASTICSEARCH_PASSWORD}' | base64 -d)
-    echo "Elasticsearch password: $PASSWORD"
+    kubectl -n $NAMESPACE apply -f -<<EOT
+apiVersion: v1
+kind: Secret
+type: Opaque
+metadata:
+  name: onms-passwords
+data:
+  ELASTIC_PASSWORD: ${ELASTIC_PASSWORD_B64}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_B64}
+EOT
+}
 
-    PASSWORD=$(kubectl -n ${NAMESPACE} get secret onms-passwords -o jsonpath='{.data.GRAFANA_UI_ADMIN_PASSWORD}' | base64 -d)
-    echo "Grafana admin password: $PASSWORD"
+create_settings() {
+  export KAFKABROKERS=$(curl -sS -u ${KAFKA_USER}:${KAFKA_PASSWORD} -G https://${HDI}/api/v1/clusters/flows/services/KAFKA/components/KAFKA_BROKER | jq -r '["\(.host_components[].HostRoles.host_name):9092"] | join(",")' | cut -d',' -f1,2)
+  export KAFKA_SERVER=$(echo $KAFKABROKERS|cut -d, -f1)
 
-    PASSWORD=$(kubectl -n ${NAMESPACE} get secret onms-passwords -o jsonpath='{.data.OPENNMS_UI_ADMIN_PASSWORD}' | base64 -d)
-    echo "OpenNMS admin password: $PASSWORD"
+  kubectl -n $NAMESPACE apply -f -<<EOT
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: common-settings
+data:
+  TIMEZONE: 'America/New_York'
+  OPENNMS_INSTANCE_ID: K8S
+  MINION_LOCATION: Kubernetes
+  KAFKA_SERVER: ${KAFKA_SERVER}
+  ELASTIC_SERVER: ${ELASTIC_SERVER}
+  POSTGRES_SERVER: ${POSTGRES_SERVER}
+EOT
 }
 
 ### ENTRY POINT ###
+
+export RG="cloud-dev"
 
 export DOMAIN="flows.cloud.opennms.com"
 export EMAIL="saas@opennms.com"
 export NAMESPACE="opennms"
 
+export HDI=kafka-flows.azurehdinsight.net
+export KAFKA_USER=admin
+export KAFKA_PASSWORD=$(pwgen -ycnB 20 1)
+
+export ELASTIC_SERVER=
+export ELASTIC_USER=opennms
+export ELASTIC_PASSWORD="${KAFKA_PASSWORD}"
+export ELASTIC_INTERNAL_PASSWORD=$(pwgen -yncB 20 1)
+
+export POSTGRES_SERVER=opennms-flows-lab
+export POSTGRES_USER=opennms
+export POSTGRES_PASSWORD="${ELASTIC_INTERNAL_PASSWORD}"
+
+echo "Kafka: ${KAFKA_USER} / ${KAFKA_PASSWORD}"
+echo "Elastic: ${ELASTIC_USER} / ${ELASTIC_PASSWORD}"
+echo "Postgres: ${POSTGRES_USER} / ${POSTGRES_PASSWORD}"
+
 case "$1" in
     up) up ;;
+    infraup) infra_up ;;
+    kubeup) kube_up ;;
     down) down ;;
-    status) status ;;
-    *) echo $(basename $0) '(up|down|status)' ;;
+    infradown) infra_down ;;
+    kubedown) kube_down ;;
+    *) echo $(basename $0) '(up|down)' ;;
 esac
