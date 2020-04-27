@@ -1,0 +1,59 @@
+# @author Alejandro Galue <agalue@opennms.org>
+#
+# A one time Job to enable OpenNMS Helm and creating the data sources on Grafana
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: helm-init
+  namespace: opennms
+  labels:
+    app: grafana
+spec:
+  ttlSecondsAfterFinished: 120
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: init-config
+        image: centos:7
+        imagePullPolicy: IfNotPresent
+        command:
+        - bash
+        - /bin/helm-init.sh
+        env:
+        - name: TZ
+          valueFrom:
+            configMapKeyRef:
+              key: TIMEZONE
+              name: common-settings
+        - name: DOMAIN
+          valueFrom:
+            configMapKeyRef:
+              key: DOMAIN
+              name: common-settings
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: GRAFANA_UI_ADMIN_PASSWORD
+              name: onms-passwords
+        - name: GRAFANA_URL
+          value: http://grafana.opennms.svc.cluster.local:3000
+        - name: ONMS_URL
+          value: https://onmsui.$(DOMAIN)/opennms
+        - name: ONMS_USER
+          value: admin
+        - name: ONMS_PASSWD
+          valueFrom:
+            secretKeyRef:
+              key: OPENNMS_UI_ADMIN_PASSWORD
+              name: onms-passwords
+        volumeMounts:
+        - name: init-scripts
+          mountPath: /bin/helm-init.sh
+          subPath: helm-init.sh
+      volumes:
+      - name: init-scripts
+        configMap:
+          name: init-scripts

@@ -1,0 +1,255 @@
+# @author Alejandro Galue <agalue@opennms.org>
+#
+# Using StatefulSets for Minions only to have a unique and immutable MINION_ID
+# This Pod includes 2 containers, one for the Minion and one for the GRPC Server for NX-OS
+#
+# NOTES:
+# - It is perfectly valid to have all the required configuration files on a config-map,
+#   and then mount those files to the overlay directory, instead of using an initContainer.
+#
+# WARNING:
+# - HorizontalPodAutoscaling is not recommended unless external intelligence is implemented,
+#   to avoid zombie entries on the Minions requisitions, that can lead to outages.
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minion
+  namespace: opennms
+  labels:
+    app: minion
+spec:
+  clusterIP: None
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8181
+    targetPort: http
+  - name: traps
+    protocol: UDP
+    port: 161
+    targetPort: traps
+  - name: syslog
+    protocol: UDP
+    port: 514
+    targetPort: syslog
+  - name: netflow5
+    protocol: UDP
+    port: 8877
+  - name: netflow9
+    protocol: UDP
+    port: 4729
+  - name: sflow
+    protocol: UDP
+    port: 6343
+  - name: ipfix
+    protocol: UDP
+    port: 4738
+  - name: nxos-udp
+    protocol: UDP
+    port: 50001
+  - name: nxos-grpc
+    protocol: TCP
+    port: 50002
+  selector:
+    app: minion
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minion
+  namespace: opennms
+  labels:
+    app: minion
+spec:
+  serviceName: minion
+  replicas: 2
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app: minion
+  template:
+    metadata:
+      labels:
+        app: minion
+    spec:
+      terminationGracePeriodSeconds: 60
+      initContainers:
+      # Initialize Minion Configuration
+      # Requires the same image/version used at runtime: minion
+      - name: init-config
+        image: opennms/minion:25.2.1
+        imagePullPolicy: IfNotPresent
+        command: [ bash, /init.sh ]
+        env:
+        - name: TZ
+          valueFrom:
+            configMapKeyRef:
+              key: TIMEZONE
+              name: common-settings
+        - name: INSTANCE_ID
+          valueFrom:
+            configMapKeyRef:
+              key: OPENNMS_INSTANCE_ID
+              name: common-settings
+        - name: OPENNMS_HTTP_USER
+          value: admin
+        - name: OPENNMS_HTTP_PASS
+          valueFrom:
+            secretKeyRef:
+              key: OPENNMS_UI_ADMIN_PASSWORD
+              name: onms-passwords
+        - name: KAFKA_SERVER
+          value: kafka.opennms.svc.cluster.local
+        - name: JAEGER_AGENT_HOST # Should be consistent with jaeger.yaml
+          value: onms-tracing-agent.opennms.svc.cluster.local
+        volumeMounts:
+        - name: etc-overlay
+          mountPath: /etc-overlay
+        - name: init-scripts
+          mountPath: /init.sh
+          subPath: onms-minion-init.sh
+      # Wait for all the dependencies
+      - name: dependencies
+        image: waisbrot/wait
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: TARGETS
+          value: kafka.opennms.svc.cluster.local:9092,opennms-core.opennms.svc.cluster.local:8980
+        - name: TIMEOUT
+          value: '600'
+      containers:
+      - name: minion
+        image: opennms/minion:25.2.1
+        imagePullPolicy: IfNotPresent
+        args:
+        - -c
+        env:
+        - name: TZ
+          valueFrom:
+            configMapKeyRef:
+              key: TIMEZONE
+              name: common-settings
+        - name: MINION_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: MINION_LOCATION
+          valueFrom:
+            configMapKeyRef:
+              key: MINION_LOCATION
+              name: common-settings
+        - name: OPENNMS_HTTP_URL
+          value: http://opennms-core.opennms.svc.cluster.local:8980/opennms
+        - name: MEM_TOTAL_MB
+          valueFrom:
+            resourceFieldRef:
+              resource: requests.memory
+              divisor: 1Mi
+        - name: JAVA_OPTS
+          value: -Xms$(MEM_TOTAL_MB)m -Xmx$(MEM_TOTAL_MB)m
+        - name: MAX_FD # Maximum File Descriptors
+          value: '65536'
+        ports:
+        - containerPort: 1162
+          protocol: UDP
+          name: traps
+        - containerPort: 1514
+          protocol: UDP
+          name: syslog
+        - containerPort: 8101
+          protocol: TCP
+          name: http
+        - containerPort: 8201
+          protocol: TCP
+          name: karaf
+        - containerPort: 50001
+          protocol: UDP
+          name: nxos-udp
+        - containerPort: 8877
+          protocol: UDP
+          name: netflow5
+        - containerPort: 4729
+          protocol: UDP
+          name: netflow9
+        - containerPort: 6343
+          protocol: UDP
+          name: sflow
+        - containerPort: 4738
+          protocol: UDP
+          name: ipfix
+        volumeMounts:
+        - name: etc-overlay
+          mountPath: /opt/minion-etc-overlay
+        resources:
+          limits:
+            cpu: 500m
+            memory: 2Gi
+          requests:
+            cpu: 200m
+            memory: 1Gi
+        readinessProbe:
+          tcpSocket:
+            port: karaf
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command:
+            - /health.sh
+          initialDelaySeconds: 60
+          periodSeconds: 60
+          timeoutSeconds: 15
+      # Use the following only when NX-OS Telemetry over gRPC is required.
+      # https://github.com/agalue/nxos-telemetry-to-kafka-go
+      - name: nxos-grpc
+        image: agalue/opennms-nxos-grpc-go:latest
+        imagePullPolicy: Always
+        env:
+        - name: TZ
+          valueFrom:
+            configMapKeyRef:
+              key: TIMEZONE
+              name: common-settings
+        - name: BOOTSTRAP_SERVERS
+          value: kafka.opennms.svc.cluster.local:9092
+        - name: MINION_LOCATION
+          valueFrom:
+            configMapKeyRef:
+              key: MINION_LOCATION
+              name: common-settings
+        - name: INSTANCE_ID
+          valueFrom:
+            configMapKeyRef:
+              key: OPENNMS_INSTANCE_ID
+              name: common-settings
+        - name: MINION_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: PORT
+          value: '50002' # Must match containerPort for nxos-grpc
+        - name: TOPIC
+          value: $(INSTANCE_ID).Sink.Telemetry-NXOS
+        ports:
+        - containerPort: 50002
+          protocol: TCP
+          name: nxos-grpc
+        readinessProbe:
+          tcpSocket:
+            port: nxos-grpc
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: nxos-grpc
+          initialDelaySeconds: 20
+          periodSeconds: 30
+      volumes:
+      - name: etc-overlay
+        emptyDir: {}
+      - name: init-scripts
+        configMap:
+          name: init-scripts
