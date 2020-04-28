@@ -142,10 +142,7 @@ spec:
         - name: POSTGRES_USER
           value: opennms
         - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: POSTGRES_PASSWORD
-              name: onms-passwords
+          value: opennms
         - name: POSTGRES_DB
           value: opennms
         - name: OPENNMS_HTTP_URL

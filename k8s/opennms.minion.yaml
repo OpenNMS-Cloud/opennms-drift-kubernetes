@@ -201,13 +201,13 @@ spec:
             port: karaf
           initialDelaySeconds: 30
           periodSeconds: 10
-        livenessProbe:
-          exec:
-            command:
-            - /health.sh
-          initialDelaySeconds: 60
-          periodSeconds: 60
-          timeoutSeconds: 15
+        #livenessProbe:
+        #  exec:
+        #    command:
+        #    - /health.sh
+        #  initialDelaySeconds: 60
+        #  periodSeconds: 60
+        #  timeoutSeconds: 15
       # Use the following only when NX-OS Telemetry over gRPC is required.
       # https://github.com/agalue/nxos-telemetry-to-kafka-go
       # - name: nxos-grpc
