@@ -71,6 +71,7 @@ create_secret() {
     export ELASTIC_PASSWORD_B64=$(echo -n $ELASTIC_PASSWORD|base64)
     export POSTGRES_PASSWORD_B64=$(echo -n $POSTGRES_PASSWORD|base64)
     export OPENNMS_UI_ADMIN_PASSWORD_B64=$(echo -n admin|base64) # TODO: random strong password
+    export HASURA_GRAPHQL_ACCESS_KEY_B64=$(echo -n 0p3nNMS|base64) # TODO: random strong password
 
     kubectl -n $NAMESPACE apply -f -<<EOT
 apiVersion: v1
@@ -82,6 +83,7 @@ data:
   ELASTIC_PASSWORD: ${ELASTIC_PASSWORD_B64}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_B64}
   OPENNMS_UI_ADMIN_PASSWORD: ${OPENNMS_UI_ADMIN_PASSWORD_B64}
+  HASURA_GRAPHQL_ACCESS_KEY: ${HASURA_GRAPHQL_ACCESS_KEY_B64}
 EOT
 }
 
