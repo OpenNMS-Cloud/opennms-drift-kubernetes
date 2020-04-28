@@ -39,9 +39,6 @@ kube_up() {
 
     ./ingress.sh up
 
-    echo "Installing Jaeger CRDs"
-    kubectl apply -n ${NAMESPACE} -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/crds/jaegertracing.io_jaegers_crd.yaml
-
     echo "Installing OpenNMS"
     kubectl create cm -n ${NAMESPACE} init-scripts --from-file=config
 
@@ -72,6 +69,8 @@ create_secret() {
     export POSTGRES_PASSWORD_B64=$(echo -n $POSTGRES_PASSWORD|base64)
     export OPENNMS_UI_ADMIN_PASSWORD_B64=$(echo -n admin|base64) # TODO: random strong password
     export HASURA_GRAPHQL_ACCESS_KEY_B64=$(echo -n 0p3nNMS|base64) # TODO: random strong password
+    export GRAFANA_UI_ADMIN_PASSWORD_B64=${HASURA_GRAPHQL_ACCESS_KEY_B64}
+    export GRAFANA_DB_PASSWORD_B64=$(echo -n grafana|base64) # TODO: strong random password
 
     kubectl -n $NAMESPACE apply -f -<<EOT
 apiVersion: v1
@@ -84,6 +83,8 @@ data:
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_B64}
   OPENNMS_UI_ADMIN_PASSWORD: ${OPENNMS_UI_ADMIN_PASSWORD_B64}
   HASURA_GRAPHQL_ACCESS_KEY: ${HASURA_GRAPHQL_ACCESS_KEY_B64}
+  GRAFANA_UI_ADMIN_PASSWORD: ${GRAFANA_UI_ADMIN_PASSWORD_B64}
+  GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD_B64}
 EOT
 }
 

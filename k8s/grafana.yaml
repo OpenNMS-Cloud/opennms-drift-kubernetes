@@ -5,7 +5,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: grafana
-  namespace: opennms
   labels:
     app: grafana
 spec:
@@ -19,7 +18,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: grafana
-  namespace: opennms
   labels:
     app: grafana
 spec:
@@ -37,8 +35,12 @@ spec:
         image: waisbrot/wait
         imagePullPolicy: IfNotPresent
         env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
         - name: TARGETS
-          value: postgresql.opennms.svc.cluster.local:5432
+          value: postgresql.$(POD_NAMESPACE).svc.cluster.local:5432
         - name: TIMEOUT
           value: '600'
       - name: init-database
@@ -48,8 +50,12 @@ spec:
         - sh
         - /bin/grafana-init.sh
         env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
         - name: PGHOST
-          value: postgresql.opennms.svc.cluster.local
+          value: postgresql.$(POD_NAMESPACE).svc.cluster.local
         - name: PGPORT
           value: '5432'
         - name: PGUSER
@@ -62,10 +68,7 @@ spec:
         - name: GF_DATABASE_NAME
           value: grafana
         - name: GF_DATABASE_USER
-          valueFrom:
-            secretKeyRef:
-              key: GRAFANA_DB_USERNAME
-              name: onms-passwords
+          value: grafana
         - name: GF_DATABASE_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -88,6 +91,10 @@ spec:
             configMapKeyRef:
               key: TIMEZONE
               name: common-settings
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
         - name: GF_SECURITY_ADMIN_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -96,11 +103,11 @@ spec:
         - name: GF_INSTALL_PLUGINS # Only required when using Grafana's image
           value: opennms-helm-app # Will install latest version available
         - name: GF_SERVER_DOMAIN
-          value: grafana.aws.agalue.net
+          value: grafana.flows.cloud.opennms.com
         - name: GF_SERVER_ROOT_URL
           value: /
         - name: PGHOST
-          value: postgresql.opennms.svc.cluster.local
+          value: postgresql.$(POD_NAMESPACE).svc.cluster.local
         - name: PGPORT
           value: '5432'
         - name: GF_DATABASE_TYPE
@@ -112,10 +119,7 @@ spec:
         - name: GF_DATABASE_NAME
           value: grafana
         - name: GF_DATABASE_USER
-          valueFrom:
-            secretKeyRef:
-              key: GRAFANA_DB_USERNAME
-              name: onms-passwords
+          value: grafana
         - name: GF_DATABASE_PASSWORD
           valueFrom:
             secretKeyRef:
