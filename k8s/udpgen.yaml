@@ -9,22 +9,10 @@ spec:
   securityContext:
     runAsUser: 1000
     fsGroup: 1000
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          topologyKey: kubernetes.io/hostname
-          labelSelector:
-            matchExpressions:
-            - key: app
-              operator: In
-              values:
-              - minion
   containers:
   - name: udpgen
     image: opennms/udpgen:latest
-    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "1800", "-h", "minion-0.minion.opennms.svc.cluster.local", "-p", "4729" ]
+    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "900", "-h", "minion-0.minion.opennms.svc.cluster.local", "-p", "4729" ]
     imagePullPolicy: IfNotPresent
     resources:
       limits:
@@ -45,22 +33,10 @@ spec:
   securityContext:
     runAsUser: 1000
     fsGroup: 1000
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          topologyKey: kubernetes.io/hostname
-          labelSelector:
-            matchExpressions:
-            - key: app
-              operator: In
-              values:
-              - minion
   containers:
   - name: udpgen
     image: opennms/udpgen:latest
-    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "1800", "-h", "minion-1.minion.opennms.svc.cluster.local", "-p", "4729" ]
+    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "900", "-h", "minion-1.minion.opennms.svc.cluster.local", "-p", "4729" ]
     imagePullPolicy: IfNotPresent
     resources:
       limits:
@@ -69,6 +45,3 @@ spec:
       requests:
         memory: 256Mi
         cpu: 100m
-
-# minion Netflow-9-Listener port 4729/udp
-# minion Netflow-5-Listener port 8877/udp
