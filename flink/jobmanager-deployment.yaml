@@ -18,7 +18,7 @@ spec:
       - name: jobmanager
         image: flink:1.9
         workingDir: /opt/flink
-        command: ["/bin/bash", "-c", "cp $FLINK_HOME/opt/flink-metrics-prometheus-1.9.2.jar $FLINK_HOME/lib && $FLINK_HOME/bin/jobmanager.sh start;\
+        command: ["/bin/bash", "-c", "cp $FLINK_HOME/opt/flink-metrics-prometheus-1.9.*.jar $FLINK_HOME/lib && $FLINK_HOME/bin/jobmanager.sh start;\
           while :;
           do
             if [[ -f $(find log -name '*jobmanager*.log' -print -quit) ]];
