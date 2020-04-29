@@ -123,6 +123,8 @@ spec:
             configMapKeyRef:
               key: TIMEZONE
               name: common-settings
+        - name: NUM_LISTENER_THREADS
+          value: '256'
         - name: SENTINEL_ID
           valueFrom:
             fieldRef:
@@ -168,11 +170,11 @@ spec:
           mountPath: /opt/sentinel-etc-overlay
         resources: # When Cassandra is used, allow enough memory for the resource cache and the ring buffer
           limits:
+            cpu: 8
+            memory: 4Gi
+          requests:
             cpu: 2
             memory: 2Gi
-          requests:
-            cpu: 500m
-            memory: 1Gi
         readinessProbe:
          tcpSocket:
            port: karaf

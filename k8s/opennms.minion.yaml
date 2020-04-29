@@ -191,11 +191,11 @@ spec:
           mountPath: /opt/minion-etc-overlay
         resources:
           limits:
-            cpu: 3
-            memory: 4Gi
+            cpu: 8
+            memory: 8Gi
           requests:
-            cpu: 1500m
-            memory: 1Gi
+            cpu: 8
+            memory: 4Gi
         readinessProbe:
           tcpSocket:
             port: karaf

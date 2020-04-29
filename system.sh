@@ -1,15 +1,19 @@
 #!/bin/sh
 
 infra_up() {
-  SUBNET=$(az network vnet create --name vnet-flows --address-prefix 10.5.0.0/16 -g ${RG} --subnet-name default --subnet-prefix 10.5.0.0/24 -o json --query 'newVNet.subnets[0].id')
+  echo "Creating vnet and subnets"
+  SUBNET=$(az network vnet create --name vnet-flows --address-prefix 10.5.0.0/16 -g ${RG} --subnet-name default --subnet-prefix 10.5.0.0/24 -o tsv --query 'newVNet.subnets[0].id')
+  ES_SUBNET=$(az network vnet subnet create --address-prefixes 10.5.1.0/24 -g ${RG} -n elastic --vnet-name vnet-flows -o tsv --query 'id')
 
-  az aks create -n k8s-flows -g ${RG} -p flows -s Standard_DS3_v2 -z 1 --vnet-subnet-id=${SUBNET}
+  echo "Creating Kubernetes cluster"
+  az aks create -n k8s-flows -g ${RG} -p flows -s Standard_DS5_v2 -z 3 --vnet-subnet-id=${SUBNET}
 
-  az hdinsight create -n kafka-flows -g ${RG} -t kafka --component-version kafka=2.1 --subnet ${SUBNET} --http-password "${KAFKA_PASSWORD}" --http-user "${KAFKA_USER}" --workernode-data-disks-per-node 1
+  echo "Creating Kafka HD Insight cluster"
+  az storage account create -n kafkaflows -g ${RG} --sku Standard_LRS
+  az hdinsight create -n kafka-flows -g ${RG} -t kafka --component-version kafka=2.1 --subnet ${SUBNET} --http-password "${KAFKA_PASSWORD}" --http-user "${KAFKA_USER}" --workernode-data-disks-per-node 1 --storage-account kafkaflowshdistorage
 
   #az postgres server create -n ${POSTGRES_SERVER} -g ${RG} --version 11 --sku-name GP_Gen5_4 -p "${POSTGRES_PASSWORD}" -u "${POSTGRES_USER}"
 
-  # TODO: Add another subnet 10.5.1.0/24 as 'elastic'
   # TODO: Deploy elasticsearch cluster into subnet 'elastic'
 }
 
@@ -22,6 +26,15 @@ infra_down() {
 
 kube_up() {
     az aks get-credentials -g ${RG} -n k8s-flows
+
+    if ! kubectl get ns cert-manager; then
+      ./cert-mgr.sh up
+    fi
+
+    if ! kubectl get ns ingress-nginx; then
+      ./ingress.sh up
+    fi
+  
     kubectl create ns ${NAMESPACE}
 
     create_settings
@@ -37,20 +50,25 @@ kube_up() {
     echo "Using DNS cache address: $DNSIP"
     sed -i "s/^nameservers = .*$/nameservers = $DNSIP/" config/onms-minion-init.sh
 
-    ./ingress.sh up
 
     echo "Installing OpenNMS"
     kubectl create cm -n ${NAMESPACE} init-scripts --from-file=config
-
     kubectl apply -f k8s -n ${NAMESPACE}
-    kubectl apply -f manifests/external-access.yaml -n ${NAMESPACE}
 
+    echo "Installing Flink"
     kubectl apply -f flink -n ${NAMESPACE}
-    kubectl apply -f udpgen.yaml -n ${NAMESPACE}
+
+    echo "Configuring ingress"
+    kubectl apply -f external-access.yaml -n ${NAMESPACE}
+
+    echo "Restarting traffic generators"
+    kubectl delete -f k8s/udpgen.yaml -n ${NAMESPACE}
+    sleep 4
+    kubectl apply -f k8s/udpgen.yaml -n ${NAMESPACE}
+
 }
 
 kube_down() {
-    ./ingress.sh down
     kubectl delete ns ${NAMESPACE}
 }
 
@@ -60,6 +78,7 @@ up() {
 }
 
 down() {
+  echo "Omae wa mou shindeiru..."
   kube_down
   infra_down
 }
@@ -110,7 +129,7 @@ EOT
 
 ### ENTRY POINT ###
 
-export RG="cloud-dev"
+export RG="cloud-dev-flows"
 
 export DOMAIN="flows.cloud.opennms.com"
 export EMAIL="saas@opennms.com"
@@ -120,9 +139,9 @@ export HDI=kafka-flows.azurehdinsight.net
 export KAFKA_USER=admin
 export KAFKA_PASSWORD=${KAFKA_PASSWORD:-$(pwgen -ycnB 20 1)}
 
-export ELASTIC_USER=opennms
+export ELASTIC_USER=elastic
 export ELASTIC_PASSWORD="${KAFKA_PASSWORD}"
-export ELASTIC_INTERNAL_PASSWORD=${ELASTIC_INTERNAL_PASSWORD:-$(pwgen -yncB 20 1)}
+export ELASTIC_INTERNAL_PASSWORD=${KAFKA_PASSWORD}
 
 export POSTGRES_SERVER=postgresql.${NAMESPACE}.svc.cluster.local
 export POSTGRES_USER=postgres
