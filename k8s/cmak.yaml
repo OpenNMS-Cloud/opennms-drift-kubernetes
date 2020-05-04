@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cmak
+  labels:
+    app: cmak
+spec:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - minion
+  containers:
+  - name: cmak 
+    image: hlebalbau/kafka-manager:stable
+    env:
+    - name: ZK_SERVER
+      valueFrom:
+        configMapKeyRef:
+          name: common-settings
+          key: ZK_SERVER
+    - name: ZK_HOSTS
+      value: $(ZK_SERVER):2181
+    - name: KAFKA_MANAGER_AUTH_ENABLED
+      value: 'true'
+    - name: KAFKA_MANAGER_USERNAME
+      value: admin
+    - name: KAFKA_MANAGER_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: onms-passwords
+          key: ELASTIC_PASSWORD
+    imagePullPolicy: IfNotPresent
+    resources:
+      limits:
+        memory: 2Gi
+        cpu: 2
+      requests:
+        memory: 256Mi
+        cpu: 100m
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cmak
+  labels:
+    app: cmak
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 9000
+  selector:
+    app: cmak
