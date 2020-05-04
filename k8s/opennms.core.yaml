@@ -75,7 +75,10 @@ spec:
         - name: ELASTIC_INDEX_STRATEGY_FLOWS
           value: hourly
         - name: ELASTIC_SHARDS
-          value: '10'
+          valueFrom:
+            configMapKeyRef:
+              key: ELASTIC_SHARDS
+              name: common-settings
         - name: JAEGER_AGENT_HOST # Should be consistent with jaeger.yaml
           value: onms-tracing-agent.opennms.svc.cluster.local
         volumeMounts:

@@ -33,7 +33,7 @@ spec:
       # Initialize Sentinel Configuration
       # Requires the same image/version used at runtime: sentinel
       - name: init-config
-        image: opennms/sentinel:drift261
+        image: opennms/sentinel:release-candidate
         imagePullPolicy: IfNotPresent
         command: [ bash, /init.sh ]
         env:
@@ -67,7 +67,10 @@ spec:
         - name: ELASTIC_REPLICATION_FACTOR
           value: '0'
         - name: ELASTIC_SHARDS
-          value: '10'
+          valueFrom:
+            configMapKeyRef:
+              key: ELASTIC_SHARDS
+              name: common-settings
         - name: OPENNMS_HTTP_USER
           value: admin
         - name: OPENNMS_HTTP_PASS
@@ -76,7 +79,10 @@ spec:
               key: OPENNMS_UI_ADMIN_PASSWORD
               name: onms-passwords
         - name: NUM_LISTENER_THREADS
-          value: '96'
+          valueFrom:
+            configMapKeyRef:
+              key: LISTEN_THREADS
+              name: common-settings
         volumeMounts:
         - name: etc-overlay
           mountPath: /etc-overlay
@@ -94,7 +100,7 @@ spec:
           value: '600'
       containers:
       - name: sentinel
-        image: opennms/sentinel:drift261
+        image: opennms/sentinel:release-candidate
         imagePullPolicy: IfNotPresent
         args:
         - -c
@@ -110,7 +116,10 @@ spec:
               key: TIMEZONE
               name: common-settings
         - name: NUM_LISTENER_THREADS
-          value: '96'
+          valueFrom:
+            configMapKeyRef:
+              key: LISTEN_THREADS
+              name: common-settings
         - name: SENTINEL_ID
           valueFrom:
             fieldRef:
