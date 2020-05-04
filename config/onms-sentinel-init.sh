@@ -31,6 +31,7 @@
 umask 002
 
 NUM_LISTENER_THREADS=${NUM_LISTENER_THREADS-6}
+ELASTIC_SHARDS=${ELASTIC_SHARDS-6}
 ELASTIC_INDEX_STRATEGY_FLOWS=${ELASTIC_INDEX_STRATEGY_FLOWS-daily}
 OVERLAY=/etc-overlay
 SENTINEL_HOME=/opt/sentinel
@@ -60,6 +61,7 @@ fi
 FEATURES_DIR=${OVERLAY}/featuresBoot.d
 mkdir -p ${FEATURES_DIR}
 echo "sentinel-jsonstore-postgres" > ${FEATURES_DIR}/store.boot
+echo "sentinel-blobstore-noop" >> ${FEATURES_DIR}/store.boot
 
 # Enable tracing with jaeger
 if [[ ${JAEGER_AGENT_HOST} ]]; then
@@ -74,15 +76,6 @@ if [[ ${ELASTIC_SERVER} ]]; then
   echo "Configuring Elasticsearch..."
 
   echo "sentinel-flows" > ${FEATURES_DIR}/flows.boot
-
-  if [[ ! ${CASSANDRA_SERVER} ]]; then
-    cat <<EOF > ${OVERLAY}/org.opennms.features.telemetry.adapters-sflow.cfg
-name = SFlow
-adapters.0.name = SFlow-Adapter
-adapters.0.class-name = org.opennms.netmgt.telemetry.protocols.sflow.adapter.SFlowAdapter
-queue.threads = ${NUM_LISTENER_THREADS}
-EOF
-  fi
 
   cat <<EOF > ${OVERLAY}/org.opennms.features.telemetry.adapters-ipfix.cfg
 name = IPFIX
@@ -113,8 +106,9 @@ indexPrefix = ${PREFIX}
 globalElasticPassword = ${ELASTIC_PASSWORD}
 elasticIndexStrategy = ${ELASTIC_INDEX_STRATEGY_FLOWS}
 # The following settings should be consistent with your ES cluster
-settings.index.number_of_shards = 6
+settings.index.number_of_shards = ${ELASTIC_SHARDS}
 settings.index.number_of_replicas = ${ELASTIC_REPLICATION_FACTOR}
+httpCompression = true
 EOF
 fi
 
@@ -132,7 +126,7 @@ EOF
 # Consumers
 group.id = ${INSTANCE_ID}_Sentinel
 bootstrap.servers = ${KAFKA_SERVER}:9092
-max.partition.fetch.bytes = 5000000
+max.partition.fetch.bytes = 15000000
 EOF
 fi
 

@@ -46,6 +46,7 @@ umask 002
 
 command -v rsync >/dev/null 2>&1 || { echo >&2 "rsync is required but it's not installed. Aborting."; exit 1; }
 
+ELASTIC_SHARDS=${ELASTIC_SHARDS-6}
 ELASTIC_INDEX_STRATEGY_FLOWS=${ELASTIC_INDEX_STRATEGY_FLOWS-daily}
 ELASTIC_INDEX_STRATEGY_REST=${ELASTIC_INDEX_STRATEGY_REST-monthly}
 ELASTIC_INDEX_STRATEGY_ALARMS=${ELASTIC_INDEX_STRATEGY_ALARMS-monthly}
@@ -354,7 +355,7 @@ elasticIndexStrategy=${ELASTIC_INDEX_STRATEGY_FLOWS}
 connTimeout=30000
 readTimeout=300000
 # The following settings should be consistent with your ES cluster
-settings.index.number_of_shards=6
+settings.index.number_of_shards=${ELASTIC_SHARDS}
 settings.index.number_of_replicas=${ELASTIC_REPLICATION_FACTOR}
 EOF
 
@@ -372,7 +373,7 @@ retries=1
 connTimeout=30000
 readTimeout=300000
 # The following settings should be consistent with your ES cluster
-settings.index.number_of_shards=6
+settings.index.number_of_shards=${ELASTIC_SHARDS}
 settings.index.number_of_replicas=${ELASTIC_REPLICATION_FACTOR}
 EOF
   fi
@@ -388,7 +389,7 @@ elasticIndexStrategy=${ELASTIC_INDEX_STRATEGY_ALARMS}
 connTimeout=30000
 readTimeout=300000
 # The following settings should be consistent with your ES cluster
-settings.index.number_of_shards=6
+settings.index.number_of_shards=${ELASTIC_SHARDS}
 settings.index.number_of_replicas=${ELASTIC_REPLICATION_FACTOR}
 EOF
   fi
@@ -404,7 +405,7 @@ elasticIndexStrategy=monthly
 connTimeout=30000
 readTimeout=300000
 # The following settings should be consistent with your ES cluster
-settings.index.number_of_shards=6
+settings.index.number_of_shards=${ELASTIC_SHARDS}
 settings.index.number_of_replicas=${ELASTIC_REPLICATION_FACTOR}
 EOF
   fi
