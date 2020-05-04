@@ -63,7 +63,7 @@ metadata:
     app: minion
 spec:
   serviceName: minion
-  replicas: 2
+  replicas: 4
   podManagementPolicy: Parallel
   selector:
     matchLabels:
@@ -191,10 +191,10 @@ spec:
           mountPath: /opt/minion-etc-overlay
         resources:
           limits:
-            cpu: 8
+            cpu: 4
             memory: 8Gi
           requests:
-            cpu: 8
+            cpu: 4
             memory: 4Gi
         readinessProbe:
           tcpSocket:
