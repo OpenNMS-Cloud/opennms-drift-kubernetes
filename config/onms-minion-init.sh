@@ -133,9 +133,11 @@ syslog.batch.size=5
 syslog.queue.size=1000
 EOF
 
+echo '!opennms-core-ipc-sink-offheap' > ${FEATURES_DIR}/disable-offheap.boot
+
 # Off-heap feature (must be consistent with the memory limits on the Pod)
 cat <<EOF > ${OVERLAY}/org.opennms.core.ipc.sink.offheap.cfg
-offHeapSize=512MB
+offHeapSize=0
 entriesAllowedOnHeap=10000
 batchSize=10
 offHeapFilePath=
@@ -221,7 +223,8 @@ parameters.port=4729
 parameters.maxPacketSize=16192
 parsers.0.name=Netflow-9
 parsers.0.class-name=org.opennms.netmgt.telemetry.protocols.netflow.parser.Netflow9UdpParser
-parsers.0.parameters.dnsLookupsEnabled=true
+parsers.0.parameters.dnsLookupsEnabled=false
+parsers.0.queue.use-routing-key=true
 EOF
 
   cat <<EOF > ${OVERLAY}/org.opennms.features.telemetry.listeners-udp-6343.cfg
