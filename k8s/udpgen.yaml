@@ -2,17 +2,28 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: udpgen-m0
-  namespace: opennms
   labels:
     app: udpgen
 spec:
   securityContext:
     runAsUser: 1000
     fsGroup: 1000
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchExpressions:
+            - key: statefulset.kubernetes.io/pod-name
+              operator: In
+              values:
+              - minion-0
   containers:
   - name: udpgen
     image: opennms/udpgen:latest
-    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "40000", "-t", "4", "-h", "minion-0.minion.opennms.svc.cluster.local", "-p", "4729" ]
+    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "26000", "-t", "4", "-h", "minion-0.minion.opennms.svc.cluster.local", "-p", "4729" ]
     imagePullPolicy: IfNotPresent
     resources:
       limits:
@@ -26,17 +37,28 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: udpgen-m1
-  namespace: opennms
   labels:
     app: udpgen
 spec:
   securityContext:
     runAsUser: 1000
     fsGroup: 1000
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchExpressions:
+            - key: statefulset.kubernetes.io/pod-name
+              operator: In
+              values:
+              - minion-1
   containers:
   - name: udpgen
     image: opennms/udpgen:latest
-    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "40000", "-t", "4", "-h", "minion-1.minion.opennms.svc.cluster.local", "-p", "4729" ]
+    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "26000", "-t", "4", "-h", "minion-1.minion.opennms.svc.cluster.local", "-p", "4729" ]
     imagePullPolicy: IfNotPresent
     resources:
       limits:
@@ -45,3 +67,76 @@ spec:
       requests:
         memory: 256Mi
         cpu: 100m
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: udpgen-m2
+  labels:
+    app: udpgen
+spec:
+  securityContext:
+    runAsUser: 1000
+    fsGroup: 1000
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchExpressions:
+            - key: statefulset.kubernetes.io/pod-name
+              operator: In
+              values:
+              - minion-2
+  containers:
+  - name: udpgen
+    image: opennms/udpgen:latest
+    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "26000", "-t", "4", "-h", "minion-2.minion.opennms.svc.cluster.local", "-p", "4729" ]
+    imagePullPolicy: IfNotPresent
+    resources:
+      limits:
+        memory: 512Mi
+        cpu: 4
+      requests:
+        memory: 256Mi
+        cpu: 100m
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: udpgen-m3
+  labels:
+    app: udpgen
+spec:
+  securityContext:
+    runAsUser: 1000
+    fsGroup: 1000
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchExpressions:
+            - key: statefulset.kubernetes.io/pod-name
+              operator: In
+              values:
+              - minion-3
+  containers:
+  - name: udpgen
+    image: opennms/udpgen:latest
+    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "26000", "-t", "4", "-h", "minion-3.minion.opennms.svc.cluster.local", "-p", "4729" ]
+    imagePullPolicy: IfNotPresent
+    resources:
+      limits:
+        memory: 512Mi
+        cpu: 4
+      requests:
+        memory: 256Mi
+        cpu: 100m
+
