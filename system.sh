@@ -6,11 +6,11 @@ infra_up() {
   ES_SUBNET=$(az network vnet subnet create --address-prefixes 10.5.1.0/24 -g ${RG} -n elastic --vnet-name vnet-flows -o tsv --query 'id')
 
   echo "Creating Kubernetes cluster"
-  az aks create -n k8s-flows -g ${RG} -p flows -s Standard_DS5_v2 -z 3 --vnet-subnet-id=${SUBNET}
+  az aks create -n k8s-flows -g ${RG} -p flows -s Standard_DS5_v2 --vnet-subnet-id=${SUBNET}
 
   echo "Creating Kafka HD Insight cluster"
-  az storage account create -n kafkaflows -g ${RG} --sku Standard_LRS
-  az hdinsight create -n kafka-flows -g ${RG} -t kafka --component-version kafka=2.1 --subnet ${SUBNET} --http-password "${KAFKA_PASSWORD}" --http-user "${KAFKA_USER}" --workernode-data-disks-per-node 1 --storage-account kafkaflowshdistorage
+  az storage account create -n kafkaflowshdistorage -g ${RG} --sku Standard_LRS
+  az hdinsight create -n kafka-flows -g ${RG} -t kafka --component-version kafka=2.1 --subnet ${SUBNET} --http-password "${KAFKA_PASSWORD}" --http-user "${KAFKA_USER}" --workernode-data-disks-per-node 2 --storage-account kafkaflowshdistorage
 
   #az postgres server create -n ${POSTGRES_SERVER} -g ${RG} --version 11 --sku-name GP_Gen5_4 -p "${POSTGRES_PASSWORD}" -u "${POSTGRES_USER}"
 
@@ -27,44 +27,49 @@ infra_down() {
 kube_up() {
     az aks get-credentials -g ${RG} -n k8s-flows
 
-    if ! kubectl get ns cert-manager; then
-      ./cert-mgr.sh up
-    fi
+#    if ! kubectl get ns cert-manager; then
+#      ./cert-mgr.sh up
+#    fi
 
-    if ! kubectl get ns ingress-nginx; then
-      ./ingress.sh up
-    fi
+#    if ! kubectl get ns ingress-nginx; then
+#      ./ingress.sh up
+#    fi
   
     kubectl create ns ${NAMESPACE}
 
     create_settings
     create_secret
 
-    echo "Installing a DNS cache service"
-    kubectl create cm -n ${NAMESPACE} dnscache-conf --from-file unbound.conf
-    kubectl apply -n ${NAMESPACE} -f dnscache.yaml
-    DNSIP=""
-    while [ "$DNSIP" = "" ]; do
-        DNSIP=$(kubectl get svc dnscache -n ${NAMESPACE} | grep -Eo "ClusterIP\s+\S+\s+" | awk '{print $2}')
-    done
-    echo "Using DNS cache address: $DNSIP"
-    sed -i "s/^nameservers = .*$/nameservers = $DNSIP/" config/onms-minion-init.sh
+#    echo "Installing a DNS cache service"
+#    kubectl create cm -n ${NAMESPACE} dnscache-conf --from-file unbound.conf
+#    kubectl apply -n ${NAMESPACE} -f dnscache.yaml
+#    DNSIP=""
+#    while [ "$DNSIP" = "" ]; do
+#        DNSIP=$(kubectl get svc dnscache -n ${NAMESPACE} | grep -Eo "ClusterIP\s+\S+\s+" | awk '{print $2}')
+#    done
+#    echo "Using DNS cache address: $DNSIP"
+#    sed -i "s/^nameservers = .*$/nameservers = $DNSIP/" config/onms-minion-init.sh
 
 
     echo "Installing OpenNMS"
     kubectl create cm -n ${NAMESPACE} init-scripts --from-file=config
-    kubectl apply -f k8s -n ${NAMESPACE}
+#    kubectl apply -f k8s -n ${NAMESPACE}
+    kubectl apply -f k8s/postgresql.yaml -n $NAMESPACE
+    kubectl apply -f k8s/opennms.core.yaml -n $NAMESPACE
+    kubectl apply -f k8s/opennms.minion.yaml -n $NAMESPACE
+    kubectl apply -f k8s/opennms.sentinel.yaml -n $NAMESPACE
+    kubectl apply -f k8s/cmak.yaml -n $NAMESPACE
 
     echo "Installing Flink"
     kubectl apply -f flink -n ${NAMESPACE}
 
-    echo "Configuring ingress"
-    kubectl apply -f external-access.yaml -n ${NAMESPACE}
+#    echo "Configuring ingress"
+#    kubectl apply -f external-access.yaml -n ${NAMESPACE}
 
-    echo "Restarting traffic generators"
-    kubectl delete -f k8s/udpgen.yaml -n ${NAMESPACE}
-    sleep 4
-    kubectl apply -f k8s/udpgen.yaml -n ${NAMESPACE}
+#    echo "Restarting traffic generators"
+#    kubectl delete -f k8s/udpgen.yaml -n ${NAMESPACE}
+#    sleep 4
+#    kubectl apply -f k8s/udpgen.yaml -n ${NAMESPACE}
 
 }
 
@@ -110,7 +115,8 @@ EOT
 create_settings() {
   export KAFKA_SERVER=$(curl -sS -u ${KAFKA_USER}:${KAFKA_PASSWORD} -G https://${HDI}/api/v1/clusters/kafka-flows/services/KAFKA/components/KAFKA_BROKER | jq -r '["\(.host_components[].HostRoles.host_name)"] | join(",")' | cut -d',' -f1)
   export ZK_SERVER=$(echo $KAFKA_SERVER|sed -e 's/^wn0/zk0/')
-  export ELASTIC_SERVER=$(az vm list-ip-addresses -n flowsdata-0 -g ${RG} --query '[0].virtualMachine.network.privateIpAddresses[0]')
+#  export ELASTIC_SERVER=$(az vm list-ip-addresses -n esdata-0 -g ${RG} --query '[0].virtualMachine.network.privateIpAddresses[0]')
+  export ELASTIC_SERVER=10.5.1.4
 
   kubectl -n $NAMESPACE apply -f -<<EOT
 apiVersion: v1
@@ -125,8 +131,8 @@ data:
   ZK_SERVER: ${ZK_SERVER}
   ELASTIC_SERVER: ${ELASTIC_SERVER}
   POSTGRES_SERVER: ${POSTGRES_SERVER}
-  ELASTIC_SHARDS: '3'
-  LISTEN_THREADS: '96'
+  ELASTIC_SHARDS: '8'
+  LISTEN_THREADS: '64'
 EOT
 }
 

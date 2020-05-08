@@ -20,6 +20,7 @@ spec:
   containers:
   - name: cmak 
     image: hlebalbau/kafka-manager:stable
+    #image: sheepkiller/kafka-manager:stable
     env:
     - name: ZK_SERVER
       valueFrom:

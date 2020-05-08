@@ -146,7 +146,7 @@ EOF
 ## Tweak DNS resolution for high performance
 cat <<EOF > ${OVERLAY}/org.opennms.features.dnsresolver.netty.cfg
 num-contexts = 16
-nameservers = 10.0.37.212
+nameservers = 10.0.239.183
 query-timeout-millis = 500
 max-cache-size = 500000
 min-ttl-seconds = 60

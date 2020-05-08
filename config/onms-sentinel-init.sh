@@ -109,7 +109,7 @@ elasticIndexStrategy = ${ELASTIC_INDEX_STRATEGY_FLOWS}
 settings.index.number_of_shards = ${ELASTIC_SHARDS}
 settings.index.number_of_replicas = ${ELASTIC_REPLICATION_FACTOR}
 httpCompression = true
-skipElasticsearchPersistence=true
+skipElasticsearchPersistence=false
 EOF
 fi
 
