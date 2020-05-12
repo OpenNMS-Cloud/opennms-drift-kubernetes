@@ -1,0 +1,65 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-rules
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    ingress.kubernetes.io/affinity: cookie
+    ingress.kubernetes.io/session-cookie-name: route
+    ingress.kubernetes.io/session-cookie-hash: sha1
+    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+    acme.cert-manager.io/http01-edit-in-place: 'true'
+spec:
+  tls:
+    - secretName: opennms-ingress-cert
+      hosts:
+        - onms.flows.cloud.opennms.com
+        - onmsui.flows.cloud.opennms.com
+        - grafana.flows.cloud.opennms.com
+        - hasura.flows.cloud.opennms.com
+        - flink.flows.cloud.opennms.com
+        - cmak.flows.cloud.opennms.com
+  rules:
+    - host: cmak.flows.cloud.opennms.com
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: cmak
+              servicePort: 9000
+    - host: flink.flows.cloud.opennms.com
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: flink-jobmanager
+              servicePort: 8081
+    - host: onmsui.flows.cloud.opennms.com
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: opennms-core
+              servicePort: 8980
+    - host: onms.flows.cloud.opennms.com
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: opennms-core
+              servicePort: 8980
+    - host: grafana.flows.cloud.opennms.com
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: grafana
+              servicePort: 3000
+    - host: hasura.flows.cloud.opennms.com
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: hasura
+              servicePort: 8080

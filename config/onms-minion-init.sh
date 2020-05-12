@@ -224,7 +224,7 @@ parameters.maxPacketSize=16192
 parsers.0.name=Netflow-9
 parsers.0.class-name=org.opennms.netmgt.telemetry.protocols.netflow.parser.Netflow9UdpParser
 parsers.0.parameters.dnsLookupsEnabled=false
-parsers.0.queue.use-routing-key=true
+parsers.0.queue.use-routing-key=false
 EOF
 
   cat <<EOF > ${OVERLAY}/org.opennms.features.telemetry.listeners-udp-6343.cfg

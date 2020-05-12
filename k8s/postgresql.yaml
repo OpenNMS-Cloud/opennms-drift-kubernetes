@@ -109,11 +109,11 @@ spec:
           subPath: postgresql.conf
         resources:
           limits:
-            cpu: 8
-            memory: 12Gi
-          requests:
             cpu: 4
-            memory: 6Gi
+            memory: 8Gi
+          requests:
+            cpu: 2
+            memory: 3Gi
         readinessProbe:
           exec:
             command:

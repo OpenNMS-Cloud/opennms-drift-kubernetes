@@ -23,12 +23,12 @@ spec:
   containers:
   - name: udpgen
     image: opennms/udpgen:latest
-    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "26000", "-t", "4", "-h", "minion-0.minion.opennms.svc.cluster.local", "-p", "4729" ]
+    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "26000", "-t", "8", "-h", "minion-0.minion.opennms.svc.cluster.local", "-p", "4729" ]
     imagePullPolicy: IfNotPresent
     resources:
       limits:
         memory: 512Mi
-        cpu: 4
+        cpu: 1
       requests:
         memory: 256Mi
         cpu: 100m
@@ -58,12 +58,12 @@ spec:
   containers:
   - name: udpgen
     image: opennms/udpgen:latest
-    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "26000", "-t", "4", "-h", "minion-1.minion.opennms.svc.cluster.local", "-p", "4729" ]
+    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "26000", "-t", "8", "-h", "minion-1.minion.opennms.svc.cluster.local", "-p", "4729" ]
     imagePullPolicy: IfNotPresent
     resources:
       limits:
         memory: 512Mi
-        cpu: 4
+        cpu: 1
       requests:
         memory: 256Mi
         cpu: 100m
@@ -94,12 +94,12 @@ spec:
   containers:
   - name: udpgen
     image: opennms/udpgen:latest
-    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "26000", "-t", "4", "-h", "minion-2.minion.opennms.svc.cluster.local", "-p", "4729" ]
+    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "26000", "-t", "8", "-h", "minion-2.minion.opennms.svc.cluster.local", "-p", "4729" ]
     imagePullPolicy: IfNotPresent
     resources:
       limits:
         memory: 512Mi
-        cpu: 4
+        cpu: 1
       requests:
         memory: 256Mi
         cpu: 100m
@@ -130,12 +130,12 @@ spec:
   containers:
   - name: udpgen
     image: opennms/udpgen:latest
-    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "26000", "-t", "4", "-h", "minion-3.minion.opennms.svc.cluster.local", "-p", "4729" ]
+    args: [ "/udpgen", "-i", "-x", "netflow9", "-r", "26000", "-t", "8", "-h", "minion-3.minion.opennms.svc.cluster.local", "-p", "4729" ]
     imagePullPolicy: IfNotPresent
     resources:
       limits:
         memory: 512Mi
-        cpu: 4
+        cpu: 1
       requests:
         memory: 256Mi
         cpu: 100m

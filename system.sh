@@ -1,25 +1,26 @@
 #!/bin/sh
 
 infra_up() {
-  echo "Creating vnet and subnets"
-  SUBNET=$(az network vnet create --name vnet-flows --address-prefix 10.5.0.0/16 -g ${RG} --subnet-name default --subnet-prefix 10.5.0.0/24 -o tsv --query 'newVNet.subnets[0].id')
-  ES_SUBNET=$(az network vnet subnet create --address-prefixes 10.5.1.0/24 -g ${RG} -n elastic --vnet-name vnet-flows -o tsv --query 'id')
+  SUBNET=$(az network vnet subnet show --vnet-name vnet-flows --name default -g $RG -o tsv --query 'id')
+  if [ -z "$SUBNET" ]; then
+    echo "Creating vnet"
+    SUBNET=$(az network vnet create --name vnet-flows --address-prefix 10.5.0.0/16 -g ${RG} --subnet-name default --subnet-prefix 10.5.0.0/24 -o tsv --query 'newVNet.subnets[0].id')
+  fi
+#  ES_SUBNET=$(az network vnet subnet create --address-prefixes 10.5.1.0/24 -g ${RG} -n elastic --vnet-name vnet-flows -o tsv --query 'id')
 
   echo "Creating Kubernetes cluster"
-  az aks create -n k8s-flows -g ${RG} -p flows -s Standard_DS5_v2 --vnet-subnet-id=${SUBNET}
+  az aks create -n k8s-flows -g ${RG} -p flows -s Standard_DS5_v2 --vnet-subnet-id=${SUBNET} -c 2
 
-  echo "Creating Kafka HD Insight cluster"
-  az storage account create -n kafkaflowshdistorage -g ${RG} --sku Standard_LRS
-  az hdinsight create -n kafka-flows -g ${RG} -t kafka --component-version kafka=2.1 --subnet ${SUBNET} --http-password "${KAFKA_PASSWORD}" --http-user "${KAFKA_USER}" --workernode-data-disks-per-node 2 --storage-account kafkaflowshdistorage
-
-  #az postgres server create -n ${POSTGRES_SERVER} -g ${RG} --version 11 --sku-name GP_Gen5_4 -p "${POSTGRES_PASSWORD}" -u "${POSTGRES_USER}"
+#  echo "Creating Kafka HD Insight cluster"
+#  az storage account create -n kafkaflowshdistorage -g ${RG} --sku Standard_LRS
+#  az hdinsight create -n kafka-flows -g ${RG} -t kafka --component-version kafka=2.1 --subnet ${SUBNET} --http-password "${KAFKA_PASSWORD}" --http-user "${KAFKA_USER}" --workernode-data-disks-per-node 2 --storage-account kafkaflowshdistorage
 
   # TODO: Deploy elasticsearch cluster into subnet 'elastic'
 }
 
 infra_down() {
   az aks delete -g ${RG} -n k8s-flows -y
-  az hdinsight delete -n kafka-flows -g ${RG} -y
+#  az hdinsight delete -n kafka-flows -g ${RG} -y
   # TODO: delete elastic cluster
   az network vnet delete --name vnet-flows -g ${RG}
 }
@@ -27,13 +28,13 @@ infra_down() {
 kube_up() {
     az aks get-credentials -g ${RG} -n k8s-flows
 
-#    if ! kubectl get ns cert-manager; then
-#      ./cert-mgr.sh up
-#    fi
+    if ! kubectl get ns cert-manager; then
+      ./cert-mgr.sh up
+    fi
 
-#    if ! kubectl get ns ingress-nginx; then
-#      ./ingress.sh up
-#    fi
+    if ! kubectl get ns ingress-nginx; then
+      ./ingress.sh up
+    fi
   
     kubectl create ns ${NAMESPACE}
 
@@ -63,8 +64,8 @@ kube_up() {
     echo "Installing Flink"
     kubectl apply -f flink -n ${NAMESPACE}
 
-#    echo "Configuring ingress"
-#    kubectl apply -f external-access.yaml -n ${NAMESPACE}
+    echo "Configuring ingress"
+    kubectl apply -f external-access.yaml -n ${NAMESPACE}
 
 #    echo "Restarting traffic generators"
 #    kubectl delete -f k8s/udpgen.yaml -n ${NAMESPACE}
@@ -95,6 +96,9 @@ create_secret() {
     export HASURA_GRAPHQL_ACCESS_KEY_B64=$(echo -n 0p3nNMS|base64) # TODO: random strong password
     export GRAFANA_UI_ADMIN_PASSWORD_B64=${HASURA_GRAPHQL_ACCESS_KEY_B64}
     export GRAFANA_DB_PASSWORD_B64=$(echo -n grafana|base64) # TODO: strong random password
+
+    echo "Kafka: ${KAFKA_USER} / ${KAFKA_PASSWORD}"
+    echo "Elastic: ${ELASTIC_USER} / ${ELASTIC_PASSWORD}"
 
     kubectl -n $NAMESPACE apply -f -<<EOT
 apiVersion: v1
@@ -131,8 +135,8 @@ data:
   ZK_SERVER: ${ZK_SERVER}
   ELASTIC_SERVER: ${ELASTIC_SERVER}
   POSTGRES_SERVER: ${POSTGRES_SERVER}
-  ELASTIC_SHARDS: '8'
-  LISTEN_THREADS: '64'
+  ELASTIC_SHARDS: '12'
+  LISTEN_THREADS: '140'
 EOT
 }
 
@@ -156,9 +160,8 @@ export POSTGRES_SERVER=postgresql.${NAMESPACE}.svc.cluster.local
 export POSTGRES_USER=postgres
 export POSTGRES_PASSWORD=postgres
 
-echo "Kafka: ${KAFKA_USER} / ${KAFKA_PASSWORD}"
-echo "Elastic: ${ELASTIC_USER} / ${ELASTIC_PASSWORD}"
-echo "Postgres: ${POSTGRES_USER} / ${POSTGRES_PASSWORD}"
+export VM_IMAGE_URN='Canonical:UbuntuServer:18.04-LTS:latest'
+export KAFKA_VM_SIZE='Standard_DS4_v2' # 8 CPU, 28 GB RAM
 
 case "$1" in
     settings) create_settings; create_secret ;;

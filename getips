@@ -1,0 +1,2 @@
+#!/bin/sh
+for x in esdata-0 esdata-1 esdata-2 esdata-3 esdata-4 esdata-5 esdata-6 esdata-7 esdata-8 esdata-9 esdata-10 esdata-11 esclient-0 esclient-1 ; do IP=$(az vm show -n $x -g cloud-dev-flows -d --query 'privateIps' -o tsv); echo $IP $x; done
