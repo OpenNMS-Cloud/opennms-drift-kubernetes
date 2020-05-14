@@ -191,10 +191,10 @@ spec:
           mountPath: /opt/minion-etc-overlay
         resources:
           limits:
-            cpu: 4
+            cpu: 3
             memory: 8Gi
           requests:
-            cpu: 4
+            cpu: 2
             memory: 4Gi
         readinessProbe:
           tcpSocket:

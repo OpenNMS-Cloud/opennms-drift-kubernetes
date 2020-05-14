@@ -109,7 +109,8 @@ elasticIndexStrategy = ${ELASTIC_INDEX_STRATEGY_FLOWS}
 settings.index.number_of_shards = ${ELASTIC_SHARDS}
 settings.index.number_of_replicas = ${ELASTIC_REPLICATION_FACTOR}
 httpCompression = true
-skipElasticsearchPersistence=false
+skipElasticsearchPersistence = false
+enableForwarding = true
 EOF
 fi
 
@@ -117,6 +118,11 @@ if [[ ${KAFKA_SERVER} ]]; then
   echo "Configuring Kafka..."
 
   echo "sentinel-kafka" > ${FEATURES_DIR}/kafka.boot
+
+  cat <<EOF > ${OVERLAY}/org.opennms.features.flows.persistence.kafka.cfg
+topic = opennms-flows
+bootstrap.servers = ${KAFKA_SERVER}:9092
+EOF
 
   cat <<EOF > ${OVERLAY}/org.opennms.core.ipc.sink.kafka.cfg
 # Producers
