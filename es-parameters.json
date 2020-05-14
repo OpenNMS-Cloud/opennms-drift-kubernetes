@@ -1,0 +1,252 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "elasticTags": {
+            "value": {
+                "provider": "648D2193-0CE0-4EFB-8A82-AF9792184FD9",
+                "tracking": "pid-53DEEEE7-A572-4F07-99DC-151B67BB6F1F"
+            }
+        },
+        "esVersion": {
+            "value": "7.6.0"
+        },
+        "esClusterName": {
+            "value": "esflows"
+        },
+        "loadBalancerType": {
+            "value": "internal"
+        },
+        "loadBalancerInternalSku": {
+            "value": "Basic"
+        },
+        "loadBalancerExternalSku": {
+            "value": "Basic"
+        },
+        "azureCloudPlugin": {
+            "value": "No"
+        },
+        "azureCloudStorageAccountName": {
+            "value": ""
+        },
+        "azureCloudStorageAccountResourceGroup": {
+            "value": ""
+        },
+        "xpackPlugins": {
+            "value": "Yes"
+        },
+        "esAdditionalPlugins": {
+            "value": ""
+        },
+        "esAdditionalYaml": {
+            "value": ""
+        },
+        "esHeapSize": {
+            "value": 0
+        },
+        "esHttpCertBlob": {
+            "value": ""
+        },
+        "esHttpCertPassword": {
+            "value": ""
+        },
+        "esHttpCaCertBlob": {
+            "value": ""
+        },
+        "esHttpCaCertPassword": {
+            "value": ""
+        },
+        "esTransportCaCertBlob": {
+            "value": ""
+        },
+        "esTransportCaCertPassword": {
+            "value": ""
+        },
+        "esTransportCertPassword": {
+            "value": ""
+        },
+        "samlMetadataUri": {
+            "value": ""
+        },
+        "samlServiceProviderUri": {
+            "value": ""
+        },
+        "kibana": {
+            "value": "Yes"
+        },
+        "vmSizeKibana": {
+            "value": "Standard_A2_v2"
+        },
+        "vmKibanaAcceleratedNetworking": {
+            "value": "Default"
+        },
+        "kibanaCertBlob": {
+            "value": ""
+        },
+        "kibanaKeyBlob": {
+            "value": ""
+        },
+        "kibanaKeyPassphrase": {
+            "value": ""
+        },
+        "kibanaAdditionalYaml": {
+            "value": ""
+        },
+        "logstash": {
+            "value": "No"
+        },
+        "vmSizeLogstash": {
+            "value": "Standard_DS1_v2"
+        },
+        "vmLogstashCount": {
+            "value": 1
+        },
+        "vmLogstashAcceleratedNetworking": {
+            "value": "Default"
+        },
+        "logstashHeapSize": {
+            "value": 0
+        },
+        "logstashConf": {
+            "value": ""
+        },
+        "logstashKeystorePassword": {
+            "value": ""
+        },
+        "logstashAdditionalPlugins": {
+            "value": ""
+        },
+        "logstashAdditionalYaml": {
+            "value": ""
+        },
+        "jumpbox": {
+            "value": "No"
+        },
+        "vmHostNamePrefix": {
+            "value": "es"
+        },
+        "vmSizeDataNodes": {
+            "value": "Standard_DS3_v2"
+        },
+        "vmDataNodeAcceleratedNetworking": {
+            "value": "Default"
+        },
+        "vmDataDiskCount": {
+            "value": 1
+        },
+        "vmDataDiskSize": {
+            "value": "1TiB"
+        },
+        "vmDataNodeCount": {
+            "value": 12
+        },
+        "storageAccountType": {
+            "value": "Default"
+        },
+        "dataNodesAreMasterEligible": {
+            "value": "Yes"
+        },
+        "vmSizeMasterNodes": {
+            "value": "Standard_DS1_v2"
+        },
+        "vmMasterNodeAcceleratedNetworking": {
+            "value": "Default"
+        },
+        "vmClientNodeCount": {
+            "value": 2
+        },
+        "vmSizeClientNodes": {
+            "value": "Standard_DS1_v2"
+        },
+        "vmClientNodeAcceleratedNetworking": {
+            "value": "Default"
+        },
+        "adminUsername": {
+            "value": "elastic"
+        },
+        "authenticationType": {
+            "value": "sshPublicKey"
+        },
+        "adminPassword": {
+            "value": null
+        },
+        "sshPublicKey": {
+            "value": null
+        },
+        "securityBootstrapPassword": {
+            "value": null
+        },
+        "securityAdminPassword": {
+            "value": null
+        },
+        "securityKibanaPassword": {
+            "value": null
+        },
+        "securityLogstashPassword": {
+            "value": null
+        },
+        "securityBeatsPassword": {
+            "value": null
+        },
+        "securityApmPassword": {
+            "value": null
+        },
+        "securityRemoteMonitoringPassword": {
+            "value": null
+        },
+        "location": {
+            "value": "eastus"
+        },
+        "vNetNewOrExisting": {
+            "value": "existing"
+        },
+        "vNetName": {
+            "value": "vnet-flows"
+        },
+        "vNetExistingResourceGroup": {
+            "value": "cloud-dev-flows"
+        },
+        "vNetNewAddressPrefix": {
+            "value": "10.5.0.0/16"
+        },
+        "vNetLoadBalancerIp": {
+            "value": "10.5.0.4"
+        },
+        "vNetClusterSubnetName": {
+            "value": "default"
+        },
+        "vNetNewClusterSubnetAddressPrefix": {
+            "value": "10.5.0.0/24"
+        },
+        "vNetAppGatewaySubnetName": {
+            "value": "es-gateway-subnet"
+        },
+        "vNetNewAppGatewaySubnetAddressPrefix": {
+            "value": ""
+        },
+        "appGatewayTier": {
+            "value": "Standard"
+        },
+        "appGatewaySku": {
+            "value": "Small"
+        },
+        "appGatewayCount": {
+            "value": 1
+        },
+        "appGatewayCertBlob": {
+            "value": ""
+        },
+        "appGatewayCertPassword": {
+            "value": ""
+        },
+        "appGatewayWafStatus": {
+            "value": "Disabled"
+        },
+        "appGatewayWafMode": {
+            "value": "Detection"
+        },
+        "appGatewayEsHttpCertBlob": {
+            "value": ""
+        }
+    }
+}

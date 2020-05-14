@@ -6,7 +6,71 @@ infra_up() {
     echo "Creating vnet"
     SUBNET=$(az network vnet create --name vnet-flows --address-prefix 10.5.0.0/16 -g ${RG} --subnet-name default --subnet-prefix 10.5.0.0/24 -o tsv --query 'newVNet.subnets[0].id')
   fi
-#  ES_SUBNET=$(az network vnet subnet create --address-prefixes 10.5.1.0/24 -g ${RG} -n elastic --vnet-name vnet-flows -o tsv --query 'id')
+
+  # Deploy elasticsearch cluster onto vnet
+  # must be done first so it can get certain IPs
+  TMPFILE=$(mktemp)
+  cat >$TMPFILE <<EOF
+  {
+    "adminPassword": {
+        "value": "${ELASTIC_PASSWORD}"
+    },
+    "sshPublicKey": {
+        "value": "$(cat ~/.ssh/id_rsa.pub)"
+    },
+    "securityBootstrapPassword": {
+        "value": "${ELASTIC_PASSWORD}"
+    },
+    "securityAdminPassword": {
+        "value": "${ELASTIC_PASSWORD}"
+    },
+    "securityKibanaPassword": {
+        "value": "${ELASTIC_PASSWORD}"
+    },
+    "securityLogstashPassword": {
+        "value": "${ELASTIC_PASSWORD}"
+    },
+    "securityBeatsPassword": {
+        "value": "${ELASTIC_PASSWORD}"
+    },
+    "securityApmPassword": {
+        "value": "${ELASTIC_PASSWORD}"
+    },
+    "securityRemoteMonitoringPassword": {
+        "value": "${ELASTIC_PASSWORD}"
+    },
+    "esHttpCertPassword": {
+        "value": ""
+    },
+    "esHttpCaCertPassword": {
+        "value": ""
+    },
+    "esTransportCertPassword": {
+        "value": ""
+    },
+    "esTransportCaCertPassword": {
+        "value": ""
+    },
+    "kibanaKeyBlob": {
+      "value": ""
+    },
+    "kibanaKeyPassphrase": {
+      "value": ""
+    },
+    "logstashConf": {
+      "value": ""
+    },
+    "logstashKeystorePassword": {
+      "value": ""
+    },
+    "appGatewayCertPassword": {
+      "value": ""
+    }
+  }
+EOF
+  #az deployment group create -g $RG --name esflows --template-file es-template.json \
+    --parameters @es-parameters.json --parameters @$TMPFILE
+  rm -f $TMPFILE
 
   echo "Creating Kubernetes cluster"
   az aks create -n k8s-flows -g ${RG} -p flows -s Standard_DS5_v2 --vnet-subnet-id=${SUBNET} -c 2
@@ -14,15 +78,48 @@ infra_up() {
 #  echo "Creating Kafka HD Insight cluster"
 #  az storage account create -n kafkaflowshdistorage -g ${RG} --sku Standard_LRS
 #  az hdinsight create -n kafka-flows -g ${RG} -t kafka --component-version kafka=2.1 --subnet ${SUBNET} --http-password "${KAFKA_PASSWORD}" --http-user "${KAFKA_USER}" --workernode-data-disks-per-node 2 --storage-account kafkaflowshdistorage
+}
 
-  # TODO: Deploy elasticsearch cluster into subnet 'elastic'
+infra_postup() {
+  DATANODES=$(seq -f 'esdata-%.0f' 0 11)
+  CLIENTNODES=$(seq -f 'esclient-%.0f' 0 1)
+  rm nodes
+  for x in $DATANODES $CLIENTNODES; do
+    IP=$(az vm show -n $x -g cloud-dev-flows -d --query 'privateIps' -o tsv)
+    echo $IP $x >> nodes
+  done
+
+  cat >runme <<EOF
+ssh-keygen -N "" -f .ssh/new -t rsa
+cat .ssh/new.pub >> .ssh/authorized_keys
+sudo bash -c 'cat nodes >> /etc/hosts'
+awk '{print \$2}' nodes|sed -e 's/ //g' > names
+for x in \$(cat names); do
+  scp -oStrictHostKeyChecking=no .ssh/authorized_keys \$x:.ssh/authorized_keys
+done
+for x in \$(cat names); do
+  ssh \$x sudo cp -v .ssh/authorized_keys /root/.ssh/authorized_keys
+done
+mv -f .ssh/new .ssh/id_rsa
+mv -f .ssh/new.pub .ssh/id_rsa.pub
+EOF
+
+  KIBANA=$(az vm show -n eskibana -g $RG -d --query 'fqdns' -o tsv)
+  scp ~/.ssh/id_rsa ~/.ssh/id_rsa.pub $ELASTIC_USER@$KIBANA:.ssh
+  scp nodes runme $ELASTIC_USER@$KIBANA:
+  ssh -A $ELASTIC_USER@$KIBANA sh ./runme
+  ssh $ELASTIC_USER@$KIBANA ssh esclient-0 echo ok
+
+  echo "Installing netflow aggregate template from nephron"
+  scp ../nephron/main/src/main/resources/netflow_agg-template.json $ELASTIC_USER@$KIBANA:
+  ssh $ELASTIC_USER@$KIBANA curl -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
+    -XPUT -H \'Content-Type: application/json\' \
+    http://esclient-0:9200/_template/netflow_agg -d@./netflow_agg-template.json
 }
 
 infra_down() {
-  az aks delete -g ${RG} -n k8s-flows -y
-#  az hdinsight delete -n kafka-flows -g ${RG} -y
-  # TODO: delete elastic cluster
-  az network vnet delete --name vnet-flows -g ${RG}
+  echo "お前 は もう　しんでいる..."
+  az resource delete --ids $(az resource list -g ${RG} -o tsv --query '[*].id')
 }
 
 kube_up() {
@@ -71,11 +168,32 @@ kube_up() {
 #    kubectl delete -f k8s/udpgen.yaml -n ${NAMESPACE}
 #    sleep 4
 #    kubectl apply -f k8s/udpgen.yaml -n ${NAMESPACE}
-
 }
 
 kube_down() {
     kubectl delete ns ${NAMESPACE}
+}
+
+neph_up() {
+  if [ -d ../nephron ] && [ ! -f nephron-flink-bundled*.jar ]; then
+    cd ../nephron
+    mvn clean package
+    cd -
+    cp -fv ../nephron/assemblies/flink/target/nephron-flink-bundled*.jar .
+  fi
+
+  JOBPOD=$(kubectl -n opennms get pod | grep jobmanager | awk '{print $1}')
+  KAFKA_SERVER=$(curl -sS -u ${KAFKA_USER}:${KAFKA_PASSWORD} -G https://${HDI}/api/v1/clusters/kafka-flows/services/KAFKA/components/KAFKA_BROKER | jq -r '["\(.host_components[].HostRoles.host_name)"] | join(",")' | cut -d',' -f1)
+
+  echo "Copying nephron jar to $JOBPOD"
+  kubectl -n $NAMESPACE cp nephron-flink-bundled*.jar ${JOBPOD}:nephron.jar
+  kubectl -n $NAMESPACE exec -it ${JOBPOD} -- ./bin/flink run -d --parallelism 1 \
+  --class org.opennms.nephron.Nephron nephron.jar --fixedWindowSizeMs=1000 \
+  --runner=FlinkRunner --jobName=nephron --checkpointingInterval=-1 \
+  --autoCommit=true --checkpointTimeoutMillis=-1 --topK=10 --disableMetrics=true \
+  --bootstrapServers=${KAFKA_SERVER}:9092 --defaultMaxInputDelayMs=3600000 --lateProcessingDelayMs=3600000 \
+  --elasticUser=${ELASTIC_USER} --elasticPassword=${ELASTIC_PASSWORD} \
+  --elasticUrl=http://10.5.0.4:9200/
 }
 
 up() {
@@ -84,7 +202,6 @@ up() {
 }
 
 down() {
-  echo "Omae wa mou shindeiru..."
   kube_down
   infra_down
 }
@@ -119,8 +236,7 @@ EOT
 create_settings() {
   export KAFKA_SERVER=$(curl -sS -u ${KAFKA_USER}:${KAFKA_PASSWORD} -G https://${HDI}/api/v1/clusters/kafka-flows/services/KAFKA/components/KAFKA_BROKER | jq -r '["\(.host_components[].HostRoles.host_name)"] | join(",")' | cut -d',' -f1)
   export ZK_SERVER=$(echo $KAFKA_SERVER|sed -e 's/^wn0/zk0/')
-#  export ELASTIC_SERVER=$(az vm list-ip-addresses -n esdata-0 -g ${RG} --query '[0].virtualMachine.network.privateIpAddresses[0]')
-  export ELASTIC_SERVER=10.5.1.4
+  export ELASTIC_SERVER=10.5.0.4
 
   kubectl -n $NAMESPACE apply -f -<<EOT
 apiVersion: v1
@@ -166,10 +282,6 @@ export KAFKA_VM_SIZE='Standard_DS4_v2' # 8 CPU, 28 GB RAM
 case "$1" in
     settings) create_settings; create_secret ;;
     up) up ;;
-    infraup) infra_up ;;
-    kubeup) kube_up ;;
     down) down ;;
-    infradown) infra_down ;;
-    kubedown) kube_down ;;
-    *) echo $(basename $0) '(up|down)' ;;
+    *) $1_$2 ;;
 esac
