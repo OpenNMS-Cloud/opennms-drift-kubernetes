@@ -1,0 +1,33 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "clusterName": {
+            "value": "kafka-flows"
+        },
+        "clusterLoginUserName": {
+            "value": "admin"
+        },
+        "clusterLoginPassword": {
+            "value": null
+        },
+        "location": {
+            "value": "eastus"
+        },
+        "clusterVersion": {
+            "value": "4.0"
+        },
+        "clusterWorkerNodeCount": {
+            "value": 4
+        },
+        "clusterKind": {
+            "value": "KAFKA"
+        },
+        "sshUserName": {
+            "value": "sshuser"
+        },
+        "sshPassword": {
+            "value": null
+        }
+    }
+}
