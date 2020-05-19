@@ -7,7 +7,7 @@ infra_up() {
     SUBNET=$(az network vnet create --name vnet-flows --address-prefix 10.5.0.0/16 -g ${RG} --subnet-name default --subnet-prefix 10.5.0.0/24 -o tsv --query 'newVNet.subnets[0].id')
   fi
 
-  # Deploy elasticsearch cluster onto vnet
+  echo "Creating Elasticsearch cluster"
   # must be done first so it can get certain IPs
   TMPFILE=$(mktemp)
   cat >$TMPFILE <<EOF
@@ -38,46 +38,39 @@ infra_up() {
     },
     "securityRemoteMonitoringPassword": {
         "value": "${ELASTIC_PASSWORD}"
-    },
-    "esHttpCertPassword": {
-        "value": ""
-    },
-    "esHttpCaCertPassword": {
-        "value": ""
-    },
-    "esTransportCertPassword": {
-        "value": ""
-    },
-    "esTransportCaCertPassword": {
-        "value": ""
-    },
-    "kibanaKeyBlob": {
-      "value": ""
-    },
-    "kibanaKeyPassphrase": {
-      "value": ""
-    },
-    "logstashConf": {
-      "value": ""
-    },
-    "logstashKeystorePassword": {
-      "value": ""
-    },
-    "appGatewayCertPassword": {
-      "value": ""
     }
   }
 EOF
-  #az deployment group create -g $RG --name esflows --template-file es-template.json \
+  az deployment group create -g $RG --name esflows --template-file es-template.json \
     --parameters @es-parameters.json --parameters @$TMPFILE
   rm -f $TMPFILE
 
-  echo "Creating Kubernetes cluster"
-  az aks create -n k8s-flows -g ${RG} -p flows -s Standard_DS5_v2 --vnet-subnet-id=${SUBNET} -c 2
+  echo "Resizing client VMs for ingestion"
+  az vm resize -g $RG --name esclient-0 --size Standard_D8s_v3
+  az vm resize -g $RG --name esclient-1 --size Standard_DS4_v2
 
-#  echo "Creating Kafka HD Insight cluster"
-#  az storage account create -n kafkaflowshdistorage -g ${RG} --sku Standard_LRS
-#  az hdinsight create -n kafka-flows -g ${RG} -t kafka --component-version kafka=2.1 --subnet ${SUBNET} --http-password "${KAFKA_PASSWORD}" --http-user "${KAFKA_USER}" --workernode-data-disks-per-node 2 --storage-account kafkaflowshdistorage
+  echo "Creating Kubernetes cluster"
+  az aks create -n k8s-flows -g ${RG} -p flows -s Standard_DS5_v2 --vnet-subnet-id ${SUBNET} -c 2
+  echo "MOAR COARS"
+  az aks nodepool add --cluster-name k8s-flows --name nodepool2 -g ${RG} \
+    --node-vm-size Standard_DS3_v2 --vnet-subnet-id ${SUBNET} --node-count 3
+
+  TMPFILE=$(mktemp)
+  cat >$TMPFILE <<EOF
+  {
+    "clusterLoginPassword": {
+      "value": "${KAFKA_PASSWORD}"
+    },
+    "sshPassword": {
+      "value": "${KAFKA_PASSWORD}"
+    }
+ }
+EOF
+
+  echo "Creating Kafka HD Insight cluster"
+  az deployment group create -g $RG --name kafka-flows --template-file hdi-template.json \
+    --parameters @hdi-parameters.json --parameters @$TMPFILE
+  rm -f $TMPFILE
 }
 
 infra_postup() {
@@ -108,13 +101,13 @@ EOF
   scp ~/.ssh/id_rsa ~/.ssh/id_rsa.pub $ELASTIC_USER@$KIBANA:.ssh
   scp nodes runme $ELASTIC_USER@$KIBANA:
   ssh -A $ELASTIC_USER@$KIBANA sh ./runme
-  ssh $ELASTIC_USER@$KIBANA ssh esclient-0 echo ok
+  ssh $ELASTIC_USER@$KIBANA ssh esdata-0 echo ok
 
   echo "Installing netflow aggregate template from nephron"
   scp ../nephron/main/src/main/resources/netflow_agg-template.json $ELASTIC_USER@$KIBANA:
   ssh $ELASTIC_USER@$KIBANA curl -u "${ELASTIC_USER}:${ELASTIC_PASSWORD}" \
     -XPUT -H \'Content-Type: application/json\' \
-    http://esclient-0:9200/_template/netflow_agg -d@./netflow_agg-template.json
+    http://esdata-0:9200/_template/netflow_agg -d@./netflow_agg-template.json
 }
 
 infra_down() {
@@ -138,15 +131,15 @@ kube_up() {
     create_settings
     create_secret
 
-#    echo "Installing a DNS cache service"
-#    kubectl create cm -n ${NAMESPACE} dnscache-conf --from-file unbound.conf
-#    kubectl apply -n ${NAMESPACE} -f dnscache.yaml
-#    DNSIP=""
-#    while [ "$DNSIP" = "" ]; do
-#        DNSIP=$(kubectl get svc dnscache -n ${NAMESPACE} | grep -Eo "ClusterIP\s+\S+\s+" | awk '{print $2}')
-#    done
-#    echo "Using DNS cache address: $DNSIP"
-#    sed -i "s/^nameservers = .*$/nameservers = $DNSIP/" config/onms-minion-init.sh
+#   echo "Installing a DNS cache service"
+#   kubectl create cm -n ${NAMESPACE} dnscache-conf --from-file unbound.conf
+#   kubectl apply -n ${NAMESPACE} -f dnscache.yaml
+#   DNSIP=""
+#   while [ "$DNSIP" = "" ]; do
+#       DNSIP=$(kubectl get svc dnscache -n ${NAMESPACE} | grep -Eo "ClusterIP\s+\S+\s+" | awk '{print $2}')
+#   done
+#   echo "Using DNS cache address: $DNSIP"
+#   sed -i "s/^nameservers = .*$/nameservers = $DNSIP/" config/onms-minion-init.sh
 
 
     echo "Installing OpenNMS"
@@ -187,18 +180,20 @@ neph_up() {
 
   echo "Copying nephron jar to $JOBPOD"
   kubectl -n $NAMESPACE cp nephron-flink-bundled*.jar ${JOBPOD}:nephron.jar
-  kubectl -n $NAMESPACE exec -it ${JOBPOD} -- ./bin/flink run -d --parallelism 1 \
+  kubectl -n $NAMESPACE exec -it ${JOBPOD} -- ./bin/flink run -d --parallelism 6 \
   --class org.opennms.nephron.Nephron nephron.jar --fixedWindowSizeMs=1000 \
-  --runner=FlinkRunner --jobName=nephron --checkpointingInterval=-1 \
-  --autoCommit=true --checkpointTimeoutMillis=-1 --topK=10 --disableMetrics=true \
-  --bootstrapServers=${KAFKA_SERVER}:9092 --defaultMaxInputDelayMs=3600000 --lateProcessingDelayMs=3600000 \
+  --runner=FlinkRunner --jobName=nephron --checkpointingInterval=60000 \
+  --autoCommit=false --topK=10 --disableMetrics=true \
+  --bootstrapServers=${KAFKA_SERVER}:9092 --elasticIndexStrategy=MONTHLY \
   --elasticUser=${ELASTIC_USER} --elasticPassword=${ELASTIC_PASSWORD} \
-  --elasticUrl=http://10.5.0.4:9200/
+  --elasticUrl=http://10.5.0.4:9200
 }
 
 up() {
   infra_up
+  infra_postup
   kube_up
+  neph_up
 }
 
 down() {
@@ -275,9 +270,6 @@ export ELASTIC_INTERNAL_PASSWORD=${KAFKA_PASSWORD}
 export POSTGRES_SERVER=postgresql.${NAMESPACE}.svc.cluster.local
 export POSTGRES_USER=postgres
 export POSTGRES_PASSWORD=postgres
-
-export VM_IMAGE_URN='Canonical:UbuntuServer:18.04-LTS:latest'
-export KAFKA_VM_SIZE='Standard_DS4_v2' # 8 CPU, 28 GB RAM
 
 case "$1" in
     settings) create_settings; create_secret ;;

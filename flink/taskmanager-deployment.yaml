@@ -3,7 +3,7 @@ kind: StatefulSet
 metadata:
   name: flink-taskmanager
 spec:
-  replicas: 2
+  replicas: 10
   serviceName: flink-taskmanager
   podManagementPolicy: Parallel
   selector:
@@ -16,6 +16,18 @@ spec:
         app: flink
         component: taskmanager
     spec:
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                - key: agentpool
+                  operator: In
+                  values:
+                  - nodepool2
       containers:
       - name: taskmanager
         image: flink:1.9
@@ -42,6 +54,9 @@ spec:
           mountPath: /data
         securityContext:
           runAsUser: 9999  # refers to user _flink_ from official flink image, change if necessary
+        resources:
+          requests:
+            cpu: 1
       volumes:
       - name: flink-config-volume
         configMap:
