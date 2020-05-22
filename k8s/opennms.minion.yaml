@@ -190,9 +190,6 @@ spec:
         - name: etc-overlay
           mountPath: /opt/minion-etc-overlay
         resources:
-          limits:
-            cpu: 3
-            memory: 8Gi
           requests:
             cpu: 2
             memory: 4Gi

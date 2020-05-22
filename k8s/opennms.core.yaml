@@ -138,7 +138,7 @@ spec:
           mountPath: /opt/opennms/deploy
         resources:
           limits:
-            cpu: 4
+            cpu: 2
             memory: 6Gi
           requests:
             cpu: 500m

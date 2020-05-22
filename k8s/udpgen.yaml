@@ -8,18 +8,6 @@ spec:
   securityContext:
     runAsUser: 1000
     fsGroup: 1000
-  affinity:
-    podAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          topologyKey: kubernetes.io/hostname
-          labelSelector:
-            matchExpressions:
-            - key: statefulset.kubernetes.io/pod-name
-              operator: In
-              values:
-              - minion-0
   containers:
   - name: udpgen
     image: opennms/udpgen:latest
@@ -43,18 +31,6 @@ spec:
   securityContext:
     runAsUser: 1000
     fsGroup: 1000
-  affinity:
-    podAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          topologyKey: kubernetes.io/hostname
-          labelSelector:
-            matchExpressions:
-            - key: statefulset.kubernetes.io/pod-name
-              operator: In
-              values:
-              - minion-1
   containers:
   - name: udpgen
     image: opennms/udpgen:latest
@@ -79,18 +55,6 @@ spec:
   securityContext:
     runAsUser: 1000
     fsGroup: 1000
-  affinity:
-    podAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          topologyKey: kubernetes.io/hostname
-          labelSelector:
-            matchExpressions:
-            - key: statefulset.kubernetes.io/pod-name
-              operator: In
-              values:
-              - minion-2
   containers:
   - name: udpgen
     image: opennms/udpgen:latest
@@ -115,18 +79,6 @@ spec:
   securityContext:
     runAsUser: 1000
     fsGroup: 1000
-  affinity:
-    podAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          topologyKey: kubernetes.io/hostname
-          labelSelector:
-            matchExpressions:
-            - key: statefulset.kubernetes.io/pod-name
-              operator: In
-              values:
-              - minion-3
   containers:
   - name: udpgen
     image: opennms/udpgen:latest

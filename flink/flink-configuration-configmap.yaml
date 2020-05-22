@@ -13,7 +13,13 @@ data:
     taskmanager.rpc.port: 6122
     jobmanager.heap.size: 1024m
     taskmanager.memory.process.size: 1024m
-    state.backend: filesystem
+    taskmanager.heap.size: 12288m
+    taskmanager.memory.size: 10240m
+    taskmanager.memory.preallocate: true
+    taskmanager.memory.off-heap: true
+    taskmanager.network.memory.min: 128m
+    taskmanager.network.memory.max: 256m
+    state.backend: rocksdb
     state.checkpoints.dir: file:///data/flink/checkpoints
     metrics.reporter.prom.class: org.apache.flink.metrics.prometheus.PrometheusReporter
     metrics.reporter.prom.port: 9250-9260

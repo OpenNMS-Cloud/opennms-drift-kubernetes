@@ -17,18 +17,6 @@ spec:
         app: sentinel
     spec:
       terminationGracePeriodSeconds: 60
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                  - onms
       initContainers:
       # Initialize Sentinel Configuration
       # Requires the same image/version used at runtime: sentinel
@@ -164,11 +152,8 @@ spec:
         - name: etc-overlay
           mountPath: /opt/sentinel-etc-overlay
         resources: # When Cassandra is used, allow enough memory for the resource cache and the ring buffer
-          limits:
-            cpu: 4
-            memory: 8Gi
           requests:
-            cpu: 3
+            cpu: 1
             memory: 4Gi
         readinessProbe:
          tcpSocket:
